@@ -3,24 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-lang-key="pageTitle">Ardan's Sleep Report</title>
-    
-    <!-- Tailwind CSS -->
+    <title data-lang-key="pageTitle">Ardan's Sleep Report</title>    
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-
-    <!-- SheetJS (for Excel export) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 
@@ -59,7 +49,6 @@
              color: #facc15;
         }
 
-        /* Custom scrollbar for a cleaner look */
         .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
         }
@@ -71,14 +60,13 @@
             border-radius: 10px;
         }
         
-        /* Details Toggle & Section */
         .details-section {
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.5s ease-in-out, margin-top 0.5s ease-in-out, padding-top 0.5s ease-in-out;
         }
         .details-section.expanded {
-            max-height: 500px; /* Adjust as needed */
+            max-height: 500px;
             margin-top: 1rem;
             padding-top: 1rem;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -89,27 +77,22 @@
 
     <div id="app-container" class="w-full max-w-4xl mx-auto">
         
-        <!-- Loading State -->
         <div id="loading-state" class="text-center py-20">
             <div class="loader mx-auto"></div>
             <p id="loading-text" class="mt-4 text-gray-300" data-lang-key="loadingText">Analyzing sleep data...</p>
         </div>
 
-        <!-- Main Dashboard State -->
         <div id="dashboard-state" class="hidden">
-            <!-- Header -->
             <header class="flex flex-col md:flex-row items-start md:items-center justify-between mb-8">
                 <div>
                     <h1 class="text-3xl font-bold" data-lang-key="pageHeader">Sleep Report</h1>
                     <p id="user-greeting" class="text-gray-300" data-lang-key="generatedFor">Generated for: M. Ardan Ridho Firdaus</p>
                 </div>
                 <div class="flex items-center gap-4 mt-4 md:mt-0">
-                    <!-- Language Switcher -->
                     <div class="flex items-center gap-2 text-sm">
                         <button id="lang-en" class="px-3 py-1 rounded-md bg-blue-600 text-white">EN</button>
                         <button id="lang-id" class="px-3 py-1 rounded-md bg-white/10 hover:bg-white/20">ID</button>
                     </div>
-                    <!-- Export Button -->
                     <button id="export-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2">
                         <i data-lucide="download" class="w-4 h-4"></i>
                         <span data-lang-key="exportButton">Export to XLS</span>
@@ -117,7 +100,6 @@
                 </div>
             </header>
 
-            <!-- Averages Section -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <div class="glass-card p-4 rounded-2xl">
                     <div class="flex items-center gap-1 text-sm text-gray-400">
@@ -169,7 +151,6 @@
                 </div>
             </div>
 
-            <!-- Chart Section -->
             <div class="glass-card p-4 md:p-6 rounded-2xl mb-8">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
                     <h2 class="text-xl font-semibold mb-2 sm:mb-0" data-lang-key="analysisTitle">Sleep Analysis</h2>
@@ -184,7 +165,6 @@
                 </div>
             </div>
 
-            <!-- Insights Section -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
                 <div class="glass-card p-4 rounded-2xl">
                     <h3 class="font-semibold mb-2" data-lang-key="locationInsightsTitle">Location Insights</h3>
@@ -213,7 +193,6 @@
                 </div>
             </div>
 
-            <!-- History Log -->
             <div>
                 <h2 class="text-xl font-semibold mb-4" data-lang-key="historyTitle">Full History</h2>
                 <div id="history-container" class="space-y-3 max-h-96 overflow-y-auto custom-scrollbar pr-2">
@@ -225,11 +204,9 @@
     </div>
 
     <script type="module">
-        // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // --- Firebase configuration ---
         const firebaseConfig = {
             apiKey: "AIzaSyDihjIVOO8SqUH4LMh9C9innsT-PGMubr0",
             authDomain: "personal-sleep-tracker.firebaseapp.com",
@@ -240,7 +217,6 @@
             measurementId: "G-LBCEPLGR14"
         };
 
-        // --- Translation Data ---
         const translations = {
             en: {
                 pageTitle: "Sleep Report",
@@ -322,7 +298,6 @@
             }
         };
 
-        // --- DOM Elements ---
         const loadingState = document.getElementById('loading-state');
         const dashboardState = document.getElementById('dashboard-state');
         const historyContainer = document.getElementById('history-container');
@@ -332,13 +307,11 @@
         const langEnBtn = document.getElementById('lang-en');
         const langIdBtn = document.getElementById('lang-id');
 
-        // --- App State ---
         let db;
         let allLogs = [];
         let sleepChart = null;
         let currentLang = 'en';
 
-        // --- Helper & Language Functions ---
         const setLanguage = (lang) => {
             currentLang = lang;
             document.documentElement.lang = lang;
@@ -346,17 +319,14 @@
                 const key = el.dataset.langKey;
                 const translation = translations[lang][key];
                 if (translation) {
-                    // Use innerHTML to support <b> tags in tooltips
                     el.innerHTML = translation;
                 }
             });
 
-            // Update chart if it exists
             if (sleepChart) {
                 updateChart(parseInt(document.querySelector('.chart-filter-btn.bg-blue-600').dataset.days));
             }
 
-            // Update language button styles
             langEnBtn.classList.toggle('bg-blue-600', lang === 'en');
             langEnBtn.classList.toggle('bg-white/10', lang !== 'en');
             langIdBtn.classList.toggle('bg-blue-600', lang === 'id');
@@ -373,11 +343,6 @@
         const formatTime = (ts) => ts ? ts.toDate().toLocaleTimeString(currentLang === 'id' ? 'id-ID' : 'en-US', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
         const formatLongDate = (date) => date.toLocaleDateString(currentLang === 'id' ? 'id-ID' : 'en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-
-        /**
-         * Determines the actual sleep start time for a log.
-         * It returns the timestamp of the last struggle event, or the bedtime if no struggles were logged.
-         */
         function getSleepStartTime(log) {
             if (log.struggleLogs && log.struggleLogs.length > 0) {
                 const lastStruggleTimestamp = log.struggleLogs.reduce((latest, current) => {
@@ -390,7 +355,6 @@
             return log.bedTime;
         }
 
-        // --- Data Processing ---
         function processData(logs) {
             allLogs = logs.filter(log => log.status === 'completed' && log.bedTime && log.finalWakeUpTime)
                           .sort((a, b) => a.startDate.seconds - b.startDate.seconds);
@@ -404,7 +368,7 @@
             dashboardState.classList.remove('hidden');
             
             calculateAverages();
-            updateChart(7); // Default to 7 days
+            updateChart(7);
             updateLocationInsights();
             updateMedicationInsights();
             renderHistory();
@@ -644,7 +608,6 @@
             lucide.createIcons();
         }
 
-        // --- Chart Logic ---
         function updateChart(days) {
             const now = new Date();
             const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
@@ -742,7 +705,6 @@
             });
         }
         
-        // --- Event Listeners ---
         chartFilters.addEventListener('click', (e) => {
             if (e.target.classList.contains('chart-filter-btn')) {
                 const days = parseInt(e.target.dataset.days);
@@ -811,7 +773,6 @@
             XLSX.writeFile(workbook, "Sleep_Report_M_Ardan_Ridho_Firdaus.xlsx");
         });
 
-        // --- Initialization ---
         function main() {
             try {
                 const app = initializeApp(firebaseConfig);
@@ -825,7 +786,6 @@
                     return;
                 }
                 
-                // *** CHANGE: Read from the public collection ***
                 const logsCollection = collection(db, 'publicReports', userId, 'sleepLogs');
                 const q = query(logsCollection, orderBy('startDate', 'desc'));
 
@@ -847,3 +807,4 @@
     </script>
 </body>
 </html>
+
