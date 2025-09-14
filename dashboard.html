@@ -52,9 +52,51 @@
             100% { transform: rotate(360deg); }
         }
 
-        .summary-stars {
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+
+        .summary-stars, .rating-stars {
              color: #facc15;
         }
+        /* Sleep Rating Stars in Edit Modal */
+        .rating-stars {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .rating-stars .star {
+            cursor: pointer;
+            color: #6b7280;
+            transition: all 0.2s;
+        }
+        .rating-stars .star:hover,
+        .rating-stars .star.selected {
+            color: #facc15;
+            transform: scale(1.2);
+        }
+
 
         /* Custom scrollbar for a cleaner look */
         .custom-scrollbar::-webkit-scrollbar {
@@ -75,10 +117,20 @@
             transition: max-height 0.5s ease-in-out, margin-top 0.5s ease-in-out, padding-top 0.5s ease-in-out;
         }
         .details-section.expanded {
-            max-height: 500px; /* Adjust as needed */
+            max-height: 800px; /* Increased max-height */
             margin-top: 1rem;
             padding-top: 1rem;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Input type time/date color scheme */
+        input[type="time"], input[type="date"] {
+            color-scheme: dark;
+        }
+
+        /* Toast notification for copy link */
+        #toast-notification {
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
         }
     </style>
 </head>
@@ -100,10 +152,16 @@
                     <h1 class="text-3xl font-bold">Sleep Dashboard</h1>
                     <p id="user-greeting" class="text-gray-300"></p>
                 </div>
-                <a href="index.html" class="mt-4 md:mt-0 bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2">
-                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
-                    <span>Back to Logger</span>
-                </a>
+                <div class="flex items-center gap-4 mt-4 md:mt-0">
+                    <button id="share-report-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2">
+                        <i data-lucide="share-2" class="w-4 h-4"></i>
+                        <span>Share Report</span>
+                    </button>
+                    <a href="index.html" class="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                        <span>Back to Logger</span>
+                    </a>
+                </div>
             </header>
 
             <!-- Averages Section -->
@@ -213,11 +271,129 @@
         </div>
     </div>
 
+    <!-- Modals -->
+    <div id="delete-confirm-modal" class="modal-overlay">
+        <div class="glass-card w-full max-w-sm p-8 rounded-2xl text-center modal-content">
+            <i data-lucide="alert-triangle" class="w-16 h-16 text-red-400 mx-auto mb-4"></i>
+            <h2 class="text-2xl font-bold mb-2">Are you sure?</h2>
+            <p class="text-gray-300 mb-6">This action cannot be undone. The sleep log will be permanently deleted.</p>
+            <div class="flex gap-4">
+                <button id="cancel-delete-btn" class="w-full bg-white/10 hover:bg-white/20 font-bold py-3 px-4 rounded-lg">Cancel</button>
+                <button id="confirm-delete-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="edit-log-modal" class="modal-overlay">
+        <div class="glass-card w-full max-w-lg p-6 rounded-2xl modal-content custom-scrollbar overflow-y-auto max-h-[90vh]">
+            <h2 class="text-xl font-bold mb-4">Edit Sleep Log</h2>
+            <div class="space-y-4 text-sm">
+                <!-- Basic Info -->
+                <div class="border-b border-white/10 pb-4">
+                    <label for="edit-date" class="block font-medium text-gray-300 mb-1">Date</label>
+                    <input type="date" id="edit-date" class="w-full bg-white/10 rounded-md border-white/20 p-2" disabled>
+                    
+                    <label class="block font-medium text-gray-300 mb-1 mt-3">Location</label>
+                    <div class="space-y-2 text-sm p-2 border border-white/10 rounded-md">
+                         <div>
+                            <input type="radio" id="edit-location-home" name="edit-location" value="Home">
+                            <label for="edit-location-home" class="ml-2">Home</label>
+                        </div>
+                        <div>
+                            <input type="radio" id="edit-location-dorm" name="edit-location" value="Dorm">
+                            <label for="edit-location-dorm" class="ml-2">Dorm</label>
+                        </div>
+                    </div>
+                    <div class="flex items-center mt-2">
+                        <input type="radio" id="edit-location-other-radio" name="edit-location" value="other">
+                        <label for="edit-location-other-radio" class="ml-2 mr-3">Other:</label>
+                        <input type="text" id="edit-location-other-input" class="w-full bg-white/10 rounded-md border-white/20 p-2" placeholder="Custom location...">
+                    </div>
+                
+                    <div class="grid grid-cols-2 gap-4 mt-3">
+                        <div>
+                            <label for="edit-bed-time" class="block font-medium text-gray-300 mb-1">Bed Time</label>
+                            <input type="time" id="edit-bed-time" class="w-full bg-white/10 rounded-md border-white/20 p-2">
+                        </div>
+                        <div>
+                            <label for="edit-final-wake-up-time" class="block font-medium text-gray-300 mb-1">Final Wake Up</label>
+                            <input type="time" id="edit-final-wake-up-time" class="w-full bg-white/10 rounded-md border-white/20 p-2">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Medication -->
+                <div class="border-b border-white/10 pb-4">
+                     <label class="block font-medium text-gray-300 mb-1">Medication</label>
+                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                         <div>
+                            <label class="block text-xs text-gray-400 mb-1">Default Medications</label>
+                            <div class="space-y-2 text-sm p-2 border border-white/10 rounded-md">
+                                <div id="edit-meds-option-1" class="hidden">
+                                    <input type="checkbox" id="edit-med-1" name="edit-med-default">
+                                    <label id="edit-med-label-1" for="edit-med-1" class="ml-2">Default Med 1</label>
+                                </div>
+                                <div id="edit-meds-option-2" class="hidden">
+                                    <input type="checkbox" id="edit-med-2" name="edit-med-default">
+                                    <label id="edit-med-label-2" for="edit-med-2" class="ml-2">Default Med 2</label>
+                                </div>
+                            </div>
+                            <label class="block text-xs text-gray-400 mb-1 mt-2">Other Meds (comma separated)</label>
+                            <input type="text" id="edit-meds-other-input" class="w-full bg-white/10 rounded-md border-white/20 p-2">
+                         </div>
+                         <div>
+                            <label for="edit-meds-time" class="block text-xs text-gray-400 mb-1">Time Taken</label>
+                            <input type="time" id="edit-meds-time" class="w-full bg-white/10 rounded-md border-white/20 p-2">
+                        </div>
+                     </div>
+                </div>
+
+                <!-- Dynamic Events -->
+                <div id="edit-events-container" class="space-y-4">
+                    <!-- Struggles -->
+                    <div>
+                        <label class="block font-medium text-gray-300 mb-2">Struggle Events</label>
+                        <div id="edit-struggles-list" class="space-y-2"></div>
+                        <button id="add-struggle-btn" class="mt-2 text-xs bg-white/10 hover:bg-white/20 py-1 px-3 rounded-md flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> Add Struggle</button>
+                    </div>
+                    <!-- Wakeups -->
+                    <div>
+                        <label class="block font-medium text-gray-300 mb-2">Wake Up Events</label>
+                        <div id="edit-wakeups-list" class="space-y-2"></div>
+                        <button id="add-wakeup-btn" class="mt-2 text-xs bg-white/10 hover:bg-white/20 py-1 px-3 rounded-md flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> Add Wake Up</button>
+                    </div>
+                </div>
+
+                <!-- Quality -->
+                <div class="border-t border-white/10 pt-4">
+                    <label class="block text-center font-medium text-gray-300 mb-2">Sleep Quality</label>
+                    <div id="edit-rating-stars" class="rating-stars text-3xl">
+                        <span class="star" data-value="1"><i data-lucide="star"></i></span>
+                        <span class="star" data-value="2"><i data-lucide="star"></i></span>
+                        <span class="star" data-value="3"><i data-lucide="star"></i></span>
+                        <span class="star" data-value="4"><i data-lucide="star"></i></span>
+                        <span class="star" data-value="5"><i data-lucide="star"></i></span>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 flex gap-3">
+                <button id="save-edit-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Save Changes</button>
+                <button id="cancel-edit-btn" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div id="toast-notification" class="fixed bottom-5 right-5 bg-green-600 text-white py-2 px-4 rounded-lg shadow-lg transform translate-y-20 opacity-0 pointer-events-none">
+        Link copied to clipboard!
+    </div>
+
+
     <script type="module">
         // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // --- Firebase configuration ---
         const firebaseConfig = {
@@ -237,12 +413,51 @@
         const historyContainer = document.getElementById('history-container');
         const noHistoryMsg = document.getElementById('no-history-msg');
         const chartFilters = document.getElementById('chart-filters');
+        const shareReportBtn = document.getElementById('share-report-btn');
+        
+        // Modals & Controls
+        const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+        const toastNotification = document.getElementById('toast-notification');
+
+        const editLogModal = document.getElementById('edit-log-modal');
+        const editDateInput = document.getElementById('edit-date');
+        const editLocationHomeRadio = document.getElementById('edit-location-home');
+        const editLocationDormRadio = document.getElementById('edit-location-dorm');
+        const editLocationOtherRadio = document.getElementById('edit-location-other-radio');
+        const editLocationOtherInput = document.getElementById('edit-location-other-input');
+        const editBedTimeInput = document.getElementById('edit-bed-time');
+        const editFinalWakeUpTimeInput = document.getElementById('edit-final-wake-up-time');
+        
+        const editMedsOption1 = document.getElementById('edit-meds-option-1');
+        const editMed1Checkbox = document.getElementById('edit-med-1');
+        const editMed1Label = document.getElementById('edit-med-label-1');
+        const editMedsOption2 = document.getElementById('edit-meds-option-2');
+        const editMed2Checkbox = document.getElementById('edit-med-2');
+        const editMed2Label = document.getElementById('edit-med-label-2');
+        const editMedsOtherInput = document.getElementById('edit-meds-other-input');
+        const editMedsTimeInput = document.getElementById('edit-meds-time');
+
+        const editStrugglesList = document.getElementById('edit-struggles-list');
+        const addStruggleBtn = document.getElementById('add-struggle-btn');
+        const editWakeupsList = document.getElementById('edit-wakeups-list');
+        const addWakeupBtn = document.getElementById('add-wakeup-btn');
+        const editRatingStarsContainer = document.getElementById('edit-rating-stars');
+        const editRatingStars = editRatingStarsContainer.querySelectorAll('.star');
+        const saveEditBtn = document.getElementById('save-edit-btn');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+
 
         // --- App State ---
         let db, auth;
         let userId = null;
         let allLogs = [];
         let sleepChart = null;
+        let logIdToDelete = null;
+        let logIdToEdit = null;
+        let selectedEditRating = 0;
+        let userSettings = {};
 
         // --- Helper Functions ---
         const formatDuration = (millis) => {
@@ -252,33 +467,35 @@
             return `${hours} h ${minutes} m`;
         };
         const formatShortDate = (date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const formatTime = (ts) => ts ? ts.toDate().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
+        const formatTime = (ts) => {
+            if (!ts) return '';
+            // If it's a Firestore Timestamp, convert it. Otherwise, assume it's a JS Date.
+            const date = typeof ts.toDate === 'function' ? ts.toDate() : ts;
+            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        };
+        const dateToYYYYMMDD = (date) => date.toISOString().split('T')[0];
+        const toggleModal = (modal, show) => {
+            if (show) modal.classList.add('visible');
+            else modal.classList.remove('visible');
+        };
 
-        /**
-         * Determines the actual sleep start time for a log.
-         * It returns the timestamp of the last struggle event, or the bedtime if no struggles were logged.
-         * @param {object} log - The sleep log object.
-         * @returns {object|null} - The Firestore Timestamp object for the start of sleep, or null if not determinable.
-         */
         function getSleepStartTime(log) {
             if (log.struggleLogs && log.struggleLogs.length > 0) {
-                // Find the latest timestamp in the struggleLogs array
                 const lastStruggleTimestamp = log.struggleLogs.reduce((latest, current) => {
-                    // Handle both old format (just a timestamp) and new format ({timestamp, note})
                     const latestTime = latest.timestamp ? latest.timestamp.toDate() : latest.toDate();
                     const currentTime = current.timestamp ? current.timestamp.toDate() : current.toDate();
                     return latestTime > currentTime ? latest : current;
                 });
                 return lastStruggleTimestamp.timestamp || lastStruggleTimestamp;
             }
-            return log.bedTime; // Fallback to the time they went to bed
+            return log.bedTime;
         }
 
         // --- Data Processing ---
         function processData(logs) {
             allLogs = logs.filter(log => log.status === 'completed' && log.bedTime && log.finalWakeUpTime)
                           .sort((a, b) => a.startDate.seconds - b.startDate.seconds);
-            
+
             if (allLogs.length === 0) {
                 loadingState.innerHTML = '<p class="text-gray-400">No sleep data found to analyze.</p>';
                 return;
@@ -512,11 +729,19 @@
                              <span class="font-bold text-lg">${duration}</span>
                         </div>
                     </div>
-                    <div class="mt-2">
-                        <button class="history-details-toggle w-full flex justify-between items-center text-xs text-cyan-400 hover:text-cyan-300">
+                     <div class="mt-2 flex justify-between items-center">
+                        <button class="history-details-toggle text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1">
                             <span>Show Details</span>
                             <i data-lucide="chevron-down" class="transition-transform w-4 h-4"></i>
                         </button>
+                        <div class="flex items-center gap-2">
+                             <button class="edit-log-btn p-2 rounded-full hover:bg-white/20" data-log-id="${log.id}" title="Edit Log">
+                                <i data-lucide="pencil" class="w-4 h-4 pointer-events-none"></i>
+                            </button>
+                            <button class="delete-log-btn p-2 rounded-full hover:bg-red-500/20 text-red-400" data-log-id="${log.id}" title="Delete Log">
+                                <i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="details-section">
                         ${detailsHTML}
@@ -656,6 +881,236 @@
                     }
                 }
             }
+
+            const deleteBtn = e.target.closest('.delete-log-btn');
+            if (deleteBtn) {
+                logIdToDelete = deleteBtn.dataset.logId;
+                toggleModal(deleteConfirmModal, true);
+            }
+
+            const editBtn = e.target.closest('.edit-log-btn');
+            if (editBtn) {
+                logIdToEdit = editBtn.dataset.logId;
+                const logData = allLogs.find(log => log.id === logIdToEdit);
+                if (logData) {
+                    populateEditModal(logData);
+                }
+            }
+        });
+
+        shareReportBtn.addEventListener('click', () => {
+             const url = `${window.location.origin}${window.location.pathname.replace('dashboard.html', 'report.html')}?user=${userId}`;
+             navigator.clipboard.writeText(url).then(() => {
+                toastNotification.classList.remove('translate-y-20', 'opacity-0');
+                toastNotification.classList.add('translate-y-0', 'opacity-100');
+                setTimeout(() => {
+                    toastNotification.classList.add('translate-y-20', 'opacity-0');
+                    toastNotification.classList.remove('translate-y-0', 'opacity-100');
+                }, 2000);
+            });
+        });
+
+
+        // --- Delete Logic ---
+        cancelDeleteBtn.addEventListener('click', () => {
+            toggleModal(deleteConfirmModal, false);
+            logIdToDelete = null;
+        });
+
+        confirmDeleteBtn.addEventListener('click', async () => {
+            if (!logIdToDelete || !userId) return;
+            const privateDocRef = doc(db, 'users', userId, 'sleepLogs', logIdToDelete);
+            const publicDocRef = doc(db, 'publicReports', userId, 'sleepLogs', logIdToDelete);
+            
+            try {
+                await deleteDoc(privateDocRef);
+                await deleteDoc(publicDocRef);
+            } catch (error) {
+                console.error("Error deleting document: ", error);
+            } finally {
+                toggleModal(deleteConfirmModal, false);
+                logIdToDelete = null;
+            }
+        });
+
+        // --- Edit Logic ---
+        function createEventRow(event, type) {
+            const timestamp = event.timestamp || event; // Handle old and new formats
+            const note = event.note || '';
+            
+            const row = document.createElement('div');
+            row.className = 'flex items-center gap-2 event-row';
+            row.innerHTML = `
+                <input type="time" value="${formatTime(timestamp).substring(0,5)}" class="flex-grow bg-white/5 rounded-md border-white/10 p-1">
+                <input type="text" value="${note}" placeholder="Optional note..." class="flex-grow bg-white/5 rounded-md border-white/10 p-1">
+                <button class="remove-event-btn p-2 rounded-full hover:bg-red-500/20 text-red-400">
+                    <i data-lucide="x" class="w-4 h-4 pointer-events-none"></i>
+                </button>
+            `;
+            row.querySelector('.remove-event-btn').addEventListener('click', () => row.remove());
+            return row;
+        }
+        
+        function populateEditModal(log) {
+            editDateInput.value = dateToYYYYMMDD(log.startDate.toDate());
+            editBedTimeInput.value = formatTime(log.bedTime).substring(0, 5);
+            editFinalWakeUpTimeInput.value = formatTime(log.finalWakeUpTime).substring(0, 5);
+            editMedsTimeInput.value = formatTime(log.medsTime).substring(0, 5);
+            
+            // Populate locations
+            if (log.location === 'Home') editLocationHomeRadio.checked = true;
+            else if (log.location === 'Dorm') editLocationDormRadio.checked = true;
+            else {
+                editLocationOtherRadio.checked = true;
+                editLocationOtherInput.value = log.location;
+            }
+            if (log.location === 'Home' || log.location === 'Dorm') {
+                 editLocationOtherInput.value = '';
+            }
+
+
+            // Populate medications from settings
+            const otherMeds = [];
+            const medsTaken = new Set(log.medicationTaken || []);
+
+            // Handle default med 1
+            if (userSettings.defaultMedication1) {
+                editMedsOption1.classList.remove('hidden');
+                editMed1Label.textContent = userSettings.defaultMedication1;
+                editMed1Checkbox.checked = medsTaken.has(userSettings.defaultMedication1);
+            } else {
+                editMedsOption1.classList.add('hidden');
+            }
+             // Handle default med 2
+            if (userSettings.defaultMedication2) {
+                editMedsOption2.classList.remove('hidden');
+                editMed2Label.textContent = userSettings.defaultMedication2;
+                editMed2Checkbox.checked = medsTaken.has(userSettings.defaultMedication2);
+            } else {
+                editMedsOption2.classList.add('hidden');
+            }
+
+            // Populate other meds
+            medsTaken.forEach(med => {
+                if(med !== userSettings.defaultMedication1 && med !== userSettings.defaultMedication2) {
+                    otherMeds.push(med);
+                }
+            });
+            editMedsOtherInput.value = otherMeds.join(', ');
+
+
+            // Populate events
+            editStrugglesList.innerHTML = '';
+            log.struggleLogs?.forEach(event => editStrugglesList.appendChild(createEventRow(event, 'struggle')));
+            editWakeupsList.innerHTML = '';
+            log.accidentalWakeUps?.forEach(event => editWakeupsList.appendChild(createEventRow(event, 'wakeup')));
+
+            selectedEditRating = log.sleepQuality || 0;
+            updateEditStars();
+            lucide.createIcons();
+            toggleModal(editLogModal, true);
+        }
+
+        addStruggleBtn.addEventListener('click', () => {
+            const newEvent = { timestamp: new Date(), note: '' };
+            editStrugglesList.appendChild(createEventRow(newEvent, 'struggle'));
+            lucide.createIcons();
+        });
+        addWakeupBtn.addEventListener('click', () => {
+            const newEvent = { timestamp: new Date(), note: '' };
+            editWakeupsList.appendChild(createEventRow(newEvent, 'wakeup'));
+            lucide.createIcons();
+        });
+
+        function updateEditStars() {
+            editRatingStars.forEach(s => {
+                const isSelected = parseInt(s.dataset.value) <= selectedEditRating;
+                s.classList.toggle('selected', isSelected);
+                const svg = s.querySelector('svg');
+                if (svg) svg.setAttribute('fill', isSelected ? 'currentColor' : 'none');
+            });
+        }
+
+        editRatingStars.forEach(star => {
+            star.addEventListener('click', () => {
+                selectedEditRating = parseInt(star.dataset.value);
+                updateEditStars();
+            });
+        });
+
+        cancelEditBtn.addEventListener('click', () => {
+            toggleModal(editLogModal, false);
+            logIdToEdit = null;
+        });
+
+        saveEditBtn.addEventListener('click', async () => {
+            if (!logIdToEdit || !userId) return;
+
+            const originalLog = allLogs.find(log => log.id === logIdToEdit);
+            if (!originalLog) return;
+            
+            // Get location
+            let location = document.querySelector('input[name="edit-location"]:checked')?.value;
+            if (location === 'other') {
+                location = editLocationOtherInput.value.trim();
+            }
+
+            // Get medications
+            const medicationTaken = [];
+            if(editMed1Checkbox.checked && userSettings.defaultMedication1) medicationTaken.push(userSettings.defaultMedication1);
+            if(editMed2Checkbox.checked && userSettings.defaultMedication2) medicationTaken.push(userSettings.defaultMedication2);
+            
+            const otherMeds = editMedsOtherInput.value.trim();
+            if(otherMeds) {
+                medicationTaken.push(...otherMeds.split(',').map(s => s.trim()).filter(Boolean));
+            }
+
+            const combineDateAndTime = (originalDate, timeString) => {
+                const newDate = new Date(originalDate);
+                const [hours, minutes] = timeString.split(':');
+                newDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+                return newDate;
+            };
+
+            const parseEventRows = (container, originalDate) => {
+                return Array.from(container.querySelectorAll('.event-row')).map(row => {
+                    const timeInput = row.querySelector('input[type="time"]');
+                    const noteInput = row.querySelector('input[type="text"]');
+                    return {
+                        timestamp: combineDateAndTime(originalDate, timeInput.value),
+                        note: noteInput.value.trim()
+                    };
+                });
+            };
+            
+            const originalStartDate = originalLog.startDate.toDate();
+
+            const updateData = {
+                location: location,
+                sleepQuality: selectedEditRating,
+                bedTime: combineDateAndTime(originalStartDate, editBedTimeInput.value),
+                finalWakeUpTime: combineDateAndTime(originalStartDate, editFinalWakeUpTimeInput.value),
+                medicationTaken: medicationTaken,
+                medsTime: editMedsTimeInput.value ? combineDateAndTime(originalStartDate, editMedsTimeInput.value) : null,
+                struggleLogs: parseEventRows(editStrugglesList, originalStartDate),
+                accidentalWakeUps: parseEventRows(editWakeupsList, originalStartDate)
+            };
+
+            const privateDocRef = doc(db, 'users', userId, 'sleepLogs', logIdToEdit);
+            const publicDocRef = doc(db, 'publicReports', userId, 'sleepLogs', logIdToEdit);
+
+            try {
+                await updateDoc(privateDocRef, updateData);
+                const updatedPrivateDoc = await getDoc(privateDocRef);
+                if(updatedPrivateDoc.exists()) {
+                    await updateDoc(publicDocRef, updatedPrivateDoc.data());
+                }
+            } catch (error) {
+                console.error("Error updating document: ", error);
+            } finally {
+                toggleModal(editLogModal, false);
+                logIdToEdit = null;
+            }
         });
 
         // --- Initialization ---
@@ -670,6 +1125,13 @@
                         userId = user.uid;
                         userGreeting.textContent = user.displayName ? `Welcome back, ${user.displayName.split(' ')[0]}.` : 'Welcome back.';
                         
+                        // Listen to settings
+                        const settingsDocRef = doc(db, 'users', userId, 'settings', 'userProfile');
+                        onSnapshot(settingsDocRef, (doc) => {
+                            userSettings = doc.data() || {};
+                        });
+
+                        // Listen to logs
                         const logsCollection = collection(db, 'users', userId, 'sleepLogs');
                         const q = query(logsCollection, orderBy('startDate', 'desc'));
 
@@ -695,3 +1157,5 @@
     </script>
 </body>
 </html>
+
+

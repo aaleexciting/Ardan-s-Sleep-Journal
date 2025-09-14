@@ -215,6 +215,10 @@
         .custom-checkbox input {
             display: none;
         }
+        /* Input type time color scheme */
+        input[type="time"] {
+            color-scheme: dark;
+        }
     </style>
 </head>
 <body class="antialiased text-white min-h-screen flex items-center justify-center p-4">
@@ -337,23 +341,13 @@
 
             <!-- Current Log Display -->
             <div id="current-log-container" class="glass-card p-5 rounded-2xl mt-6 hidden">
-                 <div class="flex justify-between items-center border-b border-white/20 pb-3 mb-3">
-                    <h2 class="text-lg font-semibold">Tonight's Log</h2>
-                    <span id="current-log-date" class="font-semibold text-gray-300"></span>
-                 </div>
-                 <div class="space-y-3 text-sm text-gray-200">
-                    <p class="flex justify-between"><strong>Location:</strong> <span id="current-location" class="font-medium">...</span></p>
-                    <p class="flex justify-between"><strong>Meds:</strong> <span id="meds-details" class="font-medium">...</span></p>
-                    <p class="flex justify-between"><strong>In Bed:</strong> <span id="bedtime-time" class="font-medium">...</span></p>
-                    <p class="flex justify-between"><strong>Struggles:</strong> <span id="struggle-count" class="font-medium">0 times</span></p>
-                    <p class="flex justify-between"><strong>Wake-ups:</strong> <span id="wakeup-count" class="font-medium">0 times</span></p>
-                 </div>
+                <!-- Content is now fully dynamic -->
             </div>
 
             <!-- Report Button -->
             <div class="mt-6 text-center">
-                <a href="report.html" id="report-btn" class="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-6 rounded-lg transition-colors">
-                    View Sleep Report
+                <a href="dashboard.html" id="report-btn" class="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-6 rounded-lg transition-colors">
+                    View Sleep Dashboard
                 </a>
             </div>
         </div>
@@ -455,7 +449,7 @@
         </div>
     </div>
 
-    <!-- NEW: Modal for adding notes to events -->
+    <!-- Modal for adding notes to events -->
     <div id="note-modal" class="modal-overlay">
         <div class="glass-card w-full max-w-sm p-6 rounded-2xl modal-content">
             <h2 id="note-modal-title" class="text-xl font-bold mb-4">What's happening?</h2>
@@ -463,6 +457,19 @@
             <div class="mt-6 flex gap-3">
                 <button id="save-event-with-note-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Log Event</button>
                 <button id="cancel-note-btn" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW: Modal for editing event time -->
+    <div id="edit-time-modal" class="modal-overlay">
+        <div class="glass-card w-full max-w-sm p-6 rounded-2xl modal-content">
+            <h2 id="edit-time-modal-title" class="text-xl font-bold mb-4">Edit Time</h2>
+            <p class="text-sm text-gray-300 mb-4">Set a new, estimated time for this event.</p>
+            <input type="time" id="event-time-input" class="w-full bg-white/10 rounded-md border-white/20 p-2 text-3xl text-center">
+            <div class="mt-6 flex gap-3">
+                <button id="save-time-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Save</button>
+                <button id="cancel-time-btn" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
             </div>
         </div>
     </div>
@@ -541,12 +548,19 @@
         const ratingStars = document.querySelectorAll('.rating-stars .star');
         const saveRatingBtn = document.getElementById('save-rating-btn');
 
-        // NEW: Note Modal elements
         const noteModal = document.getElementById('note-modal');
         const noteModalTitle = document.getElementById('note-modal-title');
         const eventNoteInput = document.getElementById('event-note-input');
         const saveEventWithNoteBtn = document.getElementById('save-event-with-note-btn');
         const cancelNoteBtn = document.getElementById('cancel-note-btn');
+
+        // NEW: Edit Time Modal elements
+        const editTimeModal = document.getElementById('edit-time-modal');
+        const editTimeModalTitle = document.getElementById('edit-time-modal-title');
+        const eventTimeInput = document.getElementById('event-time-input');
+        const saveTimeBtn = document.getElementById('save-time-btn');
+        const cancelTimeBtn = document.getElementById('cancel-time-btn');
+
 
         // --- App State ---
         let db, auth;
@@ -556,7 +570,8 @@
         let unsubscribeLogs = null;
         let unsubscribeSettings = null;
         let selectedRating = 0;
-        let eventToLog = null; // NEW: To track which event we're adding a note for
+        let eventToLog = null; 
+        let eventToEdit = null; // NEW: To track which event we're editing
 
         // --- Helper Functions ---
         const formatTime = (ts) => ts ? ts.toDate().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '...';
@@ -614,16 +629,68 @@
             }
         }
         
+        // --- MODIFIED: This function is now fully dynamic and includes edit buttons ---
         function updateCurrentLogUI(log) {
             if (!log) return;
             currentLogContainer.classList.remove('hidden');
-            document.getElementById('current-log-date').textContent = formatDateIndonesian(log.startDate);
-            document.getElementById('current-location').textContent = log.location || '...';
-            const medsText = log.medicationTaken ? log.medicationTaken.join(', ') : '...';
-            document.getElementById('meds-details').textContent = medsText;
-            document.getElementById('bedtime-time').textContent = formatTime(log.bedTime);
-            document.getElementById('struggle-count').textContent = `${log.struggleLogs?.length || 0} times`;
-            document.getElementById('wakeup-count').textContent = `${log.accidentalWakeUps?.length || 0} times`;
+            
+            let contentHTML = `
+                <div class="flex justify-between items-center border-b border-white/20 pb-3 mb-3">
+                    <h2 class="text-lg font-semibold">Tonight's Log</h2>
+                    <span class="font-semibold text-gray-300">${formatDateIndonesian(log.startDate)}</span>
+                </div>
+                <div class="space-y-3 text-sm text-gray-200">
+                    <div class="flex justify-between">
+                        <strong>Location:</strong>
+                        <span class="font-medium">${log.location || '...'}</span>
+                    </div>
+            `;
+
+            const events = [];
+            if (log.medsTime) events.push({ type: 'medsTime', time: log.medsTime, label: `Meds (${log.medicationTaken.join(', ')})` });
+            if (log.bedTime) events.push({ type: 'bedTime', time: log.bedTime, label: 'In Bed' });
+
+            log.struggleLogs?.forEach((event, index) => {
+                const eventTime = event.timestamp || event;
+                const label = `Struggle ${event.note ? `<span class="text-xs text-gray-400 italic"> - "${event.note}"</span>` : ''}`;
+                events.push({ type: 'struggleLogs', time: eventTime, label: label, index: index });
+            });
+            log.accidentalWakeUps?.forEach((event, index) => {
+                const eventTime = event.timestamp || event;
+                const label = `Woke Up ${event.note ? `<span class="text-xs text-gray-400 italic"> - "${event.note}"</span>` : ''}`;
+                events.push({ type: 'accidentalWakeUps', time: eventTime, label: label, index: index });
+            });
+
+            events.sort((a, b) => (a.time?.toMillis() || 0) - (b.time?.toMillis() || 0));
+
+            events.forEach(event => {
+                const timeString = formatTime(event.time);
+                const dataType = `data-event-type="${event.type}"`;
+                const dataIndex = event.index !== undefined ? `data-event-index="${event.index}"` : '';
+                const dataTimestamp = event.time ? `data-event-timestamp="${event.time.toDate().toISOString()}"` : '';
+                const dataLabel = `data-event-label="${event.label.replace(/<[^>]*>?/gm, '')}"`;
+
+                contentHTML += `
+                    <div class="flex justify-between items-center">
+                        <span class="truncate pr-2">${event.label}</span>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <span class="font-medium">${timeString}</span>
+                            <button class="edit-event-btn p-1 rounded-full hover:bg-white/20 transition-colors" ${dataType} ${dataIndex} ${dataTimestamp} ${dataLabel}>
+                                <i data-lucide="pencil" class="w-3 h-3 pointer-events-none"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            contentHTML += `</div>`;
+            currentLogContainer.innerHTML = contentHTML;
+
+            currentLogContainer.querySelectorAll('.edit-event-btn').forEach(btn => {
+                btn.addEventListener('click', handleEditEventClick);
+            });
+
+            lucide.createIcons();
         }
 
         function updateLatestLogUI(log) {
@@ -631,7 +698,6 @@
             latestLogContainer.classList.remove('hidden');
             document.getElementById('latest-log-date').textContent = formatDateIndonesian(log.startDate);
             
-            // This calculation is a placeholder; the accurate calculation is on the dashboard
             if (log.bedTime && log.finalWakeUpTime) {
                 const durationMillis = log.finalWakeUpTime.toMillis() - log.bedTime.toMillis();
                 const hours = Math.floor(durationMillis / 3600000);
@@ -665,7 +731,6 @@
             const events = [];
             if (log.medsTime) events.push({ time: log.medsTime.toDate(), label: `Took Meds (${log.medicationTaken.join(', ')})`, icon: 'pilcrow' });
             if (log.bedTime) events.push({ time: log.bedTime.toDate(), label: 'Went to Bed', icon: 'bed-double' });
-            // Handle both old (timestamp) and new (object) event formats
             const processEventArray = (arr, label, icon) => {
                 if (!arr) return;
                 arr.forEach(e => {
@@ -897,15 +962,12 @@
         });
 
         saveRatingBtn.addEventListener('click', async () => {
-            // *** FIX: Capture the currentLogId in a local variable ***
             const logIdToSave = currentLogId;
             if (!logIdToSave || selectedRating === 0) return;
             
             saveRatingBtn.disabled = true;
             
-            const finalWakeUpTime = new Date(); // Capture the final wake up time now
-            
-            // 1. Update the private log
+            const finalWakeUpTime = new Date();
             const privateLogRef = doc(db, 'users', userId, 'sleepLogs', logIdToSave);
             await updateDoc(privateLogRef, { 
                 status: 'completed', 
@@ -913,14 +975,10 @@
                 sleepQuality: selectedRating
             });
 
-            // 2. Get the full private log data
             const privateLogSnap = await getDoc(privateLogRef);
-            const completedLogData = privateLogSnap.data();
-
-            // 3. Create a copy in the public collection
-            if (completedLogData) {
+            if (privateLogSnap.exists()) {
                 const publicLogRef = doc(db, 'publicReports', userId, 'sleepLogs', logIdToSave);
-                await setDoc(publicLogRef, completedLogData);
+                await setDoc(publicLogRef, privateLogSnap.data());
             }
             
             toggleModal(ratingModal, false);
@@ -928,7 +986,6 @@
 
         actionButtons.bedtime.addEventListener('click', () => logSimpleEvent('bedTime'));
         
-        // --- NEW: Logic for opening the note modal ---
         function openNoteModal(eventType, title) {
             eventToLog = eventType;
             noteModalTitle.textContent = title;
@@ -949,12 +1006,8 @@
             if (!currentLogId || !eventToLog) return;
             
             const note = eventNoteInput.value.trim();
-            const eventData = {
-                timestamp: new Date()
-            };
-            if (note) {
-                eventData.note = note;
-            }
+            const eventData = { timestamp: new Date() };
+            if (note) { eventData.note = note; }
 
             const logDoc = doc(db, 'users', userId, 'sleepLogs', currentLogId);
             const updatePayload = {};
@@ -964,6 +1017,76 @@
             
             toggleModal(noteModal, false);
             eventToLog = null;
+        });
+
+        // --- NEW: Edit Time Logic ---
+        function handleEditEventClick(e) {
+            const btn = e.currentTarget;
+            if (!btn.dataset.eventType || !btn.dataset.eventTimestamp) return;
+
+            eventToEdit = {
+                type: btn.dataset.eventType,
+                index: btn.dataset.eventIndex !== undefined ? parseInt(btn.dataset.eventIndex) : null,
+                originalTimestamp: new Date(btn.dataset.eventTimestamp)
+            };
+
+            const originalDate = eventToEdit.originalTimestamp;
+            const hours = String(originalDate.getHours()).padStart(2, '0');
+            const minutes = String(originalDate.getMinutes()).padStart(2, '0');
+            eventTimeInput.value = `${hours}:${minutes}`;
+
+            editTimeModalTitle.textContent = `Edit Time: ${btn.dataset.eventLabel}`;
+            toggleModal(editTimeModal, true);
+        }
+
+        cancelTimeBtn.addEventListener('click', () => {
+            toggleModal(editTimeModal, false);
+            eventToEdit = null;
+        });
+
+        saveTimeBtn.addEventListener('click', async () => {
+            if (!eventToEdit || !currentLogId) return;
+
+            const [hours, minutes] = eventTimeInput.value.split(':');
+            const newDate = new Date(eventToEdit.originalTimestamp);
+            newDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+            const logDocRef = doc(db, 'users', userId, 'sleepLogs', currentLogId);
+
+            try {
+                if (eventToEdit.index === null) {
+                    // Simple field update (medsTime, bedTime)
+                    const updateData = {};
+                    updateData[eventToEdit.type] = newDate;
+                    await updateDoc(logDocRef, updateData);
+                } else {
+                    // Array field update (struggleLogs, accidentalWakeUps)
+                    const docSnap = await getDoc(logDocRef);
+                    if (!docSnap.exists()) return;
+                    
+                    const logData = docSnap.data();
+                    const eventArray = logData[eventToEdit.type] || [];
+                    const eventObject = eventArray[eventToEdit.index];
+
+                    if (eventObject) {
+                        // Handle new format ({timestamp, note}) vs old format (just timestamp)
+                        if (eventObject.hasOwnProperty('timestamp')) {
+                            eventObject.timestamp = newDate;
+                        } else {
+                            eventArray[eventToEdit.index] = newDate;
+                        }
+                        
+                        const updateData = {};
+                        updateData[eventToEdit.type] = eventArray;
+                        await updateDoc(logDocRef, updateData);
+                    }
+                }
+            } catch (error) {
+                console.error("Error updating time:", error);
+            } finally {
+                toggleModal(editTimeModal, false);
+                eventToEdit = null;
+            }
         });
 
 
@@ -980,7 +1103,8 @@
                         welcomeMsg.textContent = `Hi, ${user.displayName.split(' ')[0]}`;
                         userPhoto.src = user.photoURL;
                         
-                        reportBtn.href = `report.html?user=${user.uid}`;
+                        // Link to dashboard instead of report
+                        reportBtn.href = `dashboard.html`;
 
                         loginState.classList.add('hidden');
                         appState.classList.remove('hidden');
