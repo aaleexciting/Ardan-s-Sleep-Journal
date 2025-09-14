@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ardan's Sleep Tracker</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Custom styles for the glassmorphism effect and background */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #111827; /* Darker background */
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(120, 82, 255, 0.15), transparent 40%),
+                radial-gradient(circle at 85% 30%, rgba(56, 189, 248, 0.15), transparent 40%);
+            background-attachment: fixed;
+        }
+
+        .glass-card {
+            background: rgba(31, 41, 55, 0.6); /* Darker glass */
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        
+        /* Loading spinner */
+        .loader {
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            border-top: 4px solid #fff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Modal styles with transitions */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+        
+        /* Location picker styles */
+        .location-picker label {
+            display: block;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .location-picker label:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .location-picker input:checked + label {
+            background-color: #4f46e5;
+            font-weight: 600;
+            border-color: #4f46e5;
+        }
+        .location-picker input {
+            display: none;
+        }
+
+        /* Enhanced Action Buttons */
+        .action-btn {
+            padding: 1rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            color: #e5e7eb;
+            transition: all 0.2s ease-in-out;
+            transform-style: preserve-3d;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .action-btn:before {
+            content: '';
+            position: absolute;
+            top: 0; right: 0; bottom: 0; left: 0;
+            border-radius: 0.75rem;
+            background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+            z-index: -1;
+            transition: opacity 0.2s linear;
+            opacity: 0;
+        }
+        .action-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .action-btn:hover:not(:disabled):before {
+            opacity: 1;
+        }
+        .action-btn:active:not(:disabled) {
+            transform: translateY(1px);
+            box-shadow: none;
+        }
+        .action-btn:disabled {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: #6b7280;
+            cursor: not-allowed;
+        }
+        .action-btn.is-logged {
+            background-color: #16a34a; /* Green when logged */
+            border-color: #16a34a;
+            color: white;
+        }
+
+        /* Sleep Rating Stars */
+        .rating-stars {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .rating-stars .star {
+            cursor: pointer;
+            color: #6b7280;
+            transition: all 0.2s;
+        }
+        .rating-stars .star:hover,
+        .rating-stars .star.selected {
+            color: #facc15; /* Yellow */
+            transform: scale(1.2);
+        }
+        .summary-stars {
+             color: #facc15;
+        }
+
+        /* Details Toggle & Timeline */
+        .details-section {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, margin-top 0.5s ease-in-out;
+        }
+        .details-section.expanded {
+            max-height: 500px; /* Adjust as needed */
+            margin-top: 1rem;
+        }
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+            border-left: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+        .timeline-item:last-child {
+            margin-bottom: 0;
+        }
+        .timeline-icon {
+            position: absolute;
+            left: -1.2rem;
+            top: 0.1rem;
+            width: 1.4rem;
+            height: 1.4rem;
+            background-color: #374151;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* Custom Checkbox for Meds Modal */
+        .custom-checkbox label {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .custom-checkbox input:checked + label {
+            background-color: #4f46e5;
+            border-color: #4f46e5;
+        }
+        .custom-checkbox input {
+            display: none;
+        }
+    </style>
+</head>
+<body class="antialiased text-white min-h-screen flex items-center justify-center p-4">
+
+    <div id="app-container" class="w-full max-w-md mx-auto">
+
+        <!-- Loading State -->
+        <div id="loading-state" class="text-center">
+            <div class="loader mx-auto"></div>
+            <p class="mt-4 text-gray-300">Initializing your sleep journal...</p>
+        </div>
+
+        <!-- Login State -->
+        <div id="login-state" class="hidden">
+            <div class="glass-card p-8 rounded-2xl text-center">
+                <h1 class="text-3xl font-bold mb-2">Sleep Tracker</h1>
+                <p class="text-gray-300 mb-6">Sign in to securely track your sleep.</p>
+                <button id="google-signin-btn" class="w-full bg-white/90 hover:bg-white text-gray-800 font-semibold py-3 px-4 rounded-lg flex items-center justify-center transition-all duration-300 transform hover:scale-105">
+                    <svg class="w-6 h-6 mr-3" viewBox="0 0 48 48"><path fill="#4285F4" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path><path fill="#34A853" d="m6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"></path><path fill="#FBBC05" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"></path><path fill="#EA4335" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C42.021 35.816 44 30.138 44 24c0-1.341-.138-2.65-.389-3.917z"></path></svg>
+                    Sign in with Google
+                </button>
+            </div>
+        </div>
+
+        <!-- Main App State -->
+        <div id="app-state" class="hidden">
+            <!-- Header -->
+            <header class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-4">
+                    <img id="user-photo" class="w-12 h-12 rounded-full border-2 border-white/50">
+                    <div>
+                        <h1 class="text-2xl font-bold">Sleep Journal</h1>
+                        <p id="welcome-msg" class="text-gray-300 text-sm"></p>
+                    </div>
+                </div>
+                <button id="settings-btn" class="p-2 rounded-full hover:bg-white/20 transition-colors">
+                    <i data-lucide="settings"></i>
+                </button>
+            </header>
+
+            <!-- Reminders Card -->
+            <div id="reminders-card" class="glass-card p-4 rounded-2xl mb-4 text-sm">
+                 <h2 class="text-md font-semibold mb-2">Reminders</h2>
+                 <div class="space-y-1.5">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-300">Doctor's Visit:</span>
+                        <div class="text-right">
+                            <span id="doctor-reminder-date" class="font-semibold">Not Set</span>
+                            <span id="doctor-reminder-countdown" class="block text-xs text-cyan-400"></span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-300">Renew Referral:</span>
+                        <div class="text-right">
+                            <span id="rujukan-reminder-date" class="font-semibold">Not Set</span>
+                            <span id="rujukan-reminder-countdown" class="block text-xs text-cyan-400"></span>
+                        </div>
+                    </div>
+                 </div>
+            </div>
+
+            <!-- Main Control Card -->
+            <div class="glass-card p-6 rounded-2xl">
+                <!-- Start/End Night Button -->
+                <button id="start-end-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 mb-6 disabled:bg-gray-500/50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-lg">
+                    <!-- Content will be set by JavaScript -->
+                </button>
+                
+                <!-- Action Grid -->
+                <div class="grid grid-cols-2 gap-4">
+                    <button id="meds-btn" class="action-btn flex flex-col items-center justify-center gap-2 h-28">
+                        <i data-lucide="pilcrow" class="w-8 h-8"></i><span>Took Meds</span>
+                    </button>
+                    <button id="bedtime-btn" class="action-btn flex flex-col items-center justify-center gap-2 h-28">
+                        <i data-lucide="bed-double" class="w-8 h-8"></i><span>Went to Bed</span>
+                    </button>
+                    <button id="struggle-btn" class="action-btn flex flex-col items-center justify-center gap-2 h-28">
+                        <i data-lucide="cloud-moon" class="w-8 h-8"></i><span>Struggling</span>
+                    </button>
+                    <button id="wakeup-btn" class="action-btn flex flex-col items-center justify-center gap-2 h-28">
+                        <i data-lucide="alarm-clock-off" class="w-8 h-8"></i><span>Woke Up</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Latest Log Summary with Expandable Details -->
+            <div id="latest-log-container" class="glass-card p-5 rounded-2xl mt-6 hidden">
+                 <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-semibold">Last Night's Sleep</h2>
+                    <span id="latest-log-date" class="font-semibold text-gray-300"></span>
+                 </div>
+                 <div class="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                    <div>
+                        <p class="text-gray-400">Sleep Duration</p>
+                        <p id="latest-log-duration" class="font-bold text-xl">-- h -- m</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400">Quality</p>
+                        <div id="latest-log-quality" class="flex items-center summary-stars text-xl"></div>
+                    </div>
+                    <div>
+                        <p class="text-gray-400">Struggles</p>
+                        <p id="latest-log-struggles" class="font-semibold text-lg">0 times</p>
+                    </div>
+                     <div>
+                        <p class="text-gray-400">Wake-ups</p>
+                        <p id="latest-log-wakeups" class="font-semibold text-lg">0 times</p>
+                    </div>
+                 </div>
+                 <div class="mt-4 border-t border-white/10 pt-4">
+                    <button id="details-toggle-btn" class="w-full flex justify-between items-center text-sm text-cyan-400 hover:text-cyan-300">
+                        <span>Show Details</span>
+                        <i data-lucide="chevron-down" class="transition-transform"></i>
+                    </button>
+                    <div id="latest-log-details" class="details-section">
+                        <!-- Timeline will be injected here -->
+                    </div>
+                 </div>
+            </div>
+
+            <!-- Current Log Display -->
+            <div id="current-log-container" class="glass-card p-5 rounded-2xl mt-6 hidden">
+                 <div class="flex justify-between items-center border-b border-white/20 pb-3 mb-3">
+                    <h2 class="text-lg font-semibold">Tonight's Log</h2>
+                    <span id="current-log-date" class="font-semibold text-gray-300"></span>
+                 </div>
+                 <div class="space-y-3 text-sm text-gray-200">
+                    <p class="flex justify-between"><strong>Location:</strong> <span id="current-location" class="font-medium">...</span></p>
+                    <p class="flex justify-between"><strong>Meds:</strong> <span id="meds-details" class="font-medium">...</span></p>
+                    <p class="flex justify-between"><strong>In Bed:</strong> <span id="bedtime-time" class="font-medium">...</span></p>
+                    <p class="flex justify-between"><strong>Struggles:</strong> <span id="struggle-count" class="font-medium">0 times</span></p>
+                    <p class="flex justify-between"><strong>Wake-ups:</strong> <span id="wakeup-count" class="font-medium">0 times</span></p>
+                 </div>
+            </div>
+
+            <!-- Report Button -->
+            <div class="mt-6 text-center">
+                <a href="report.html" id="report-btn" class="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-6 rounded-lg transition-colors">
+                    View Sleep Report
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="location-modal" class="modal-overlay">
+        <div class="glass-card w-full max-w-sm p-6 rounded-2xl modal-content">
+            <h2 class="text-xl font-bold mb-4">Where are you sleeping tonight?</h2>
+            <div class="space-y-3 location-picker mb-6">
+                <div>
+                    <input type="radio" id="loc-home" name="location" value="Home" checked>
+                    <label for="loc-home">Home</label>
+                </div>
+                <div>
+                    <input type="radio" id="loc-dorm" name="location" value="Dorm">
+                    <label for="loc-dorm">Dorm</label>
+                </div>
+                <div>
+                    <input type="radio" id="loc-custom" name="location" value="Custom">
+                    <label for="loc-custom">Custom</label>
+                </div>
+                <input type="text" id="custom-location-input" class="w-full bg-white/10 rounded-md border-white/20 p-2 hidden mt-2" placeholder="Enter location...">
+            </div>
+            <div class="flex gap-3">
+                <button id="confirm-start-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Start</button>
+                <button id="cancel-start-btn" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal-overlay">
+        <div class="glass-card w-full max-w-sm p-6 rounded-2xl modal-content">
+            <h2 class="text-xl font-bold mb-4">Settings & Reminders</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="default-meds-name-1" class="block text-sm font-medium text-gray-300 mb-1">Default Medication 1</label>
+                    <input type="text" id="default-meds-name-1" class="w-full bg-white/10 rounded-md border-white/20 p-2" placeholder="e.g., Alprazolam 0.5mg">
+                </div>
+                <div>
+                    <label for="default-meds-name-2" class="block text-sm font-medium text-gray-300 mb-1">Default Medication 2</label>
+                    <input type="text" id="default-meds-name-2" class="w-full bg-white/10 rounded-md border-white/20 p-2" placeholder="e.g., Mirtazapine 15mg">
+                </div>
+                <div>
+                    <label for="doctor-date" class="block text-sm font-medium text-gray-300 mb-1">Next Doctor's Visit</label>
+                    <input type="date" id="doctor-date" class="w-full bg-white/10 rounded-md border-white/20 p-2">
+                </div>
+                <div>
+                    <label for="rujukan-date" class="block text-sm font-medium text-gray-300 mb-1">Next Referral Renewal</label>
+                    <input type="date" id="rujukan-date" class="w-full bg-white/10 rounded-md border-white/20 p-2">
+                </div>
+            </div>
+            <div class="mt-6 flex gap-3">
+                <button id="save-settings-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Save</button>
+                <button id="close-settings-btn" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="meds-logging-modal" class="modal-overlay">
+        <div class="glass-card w-full max-w-sm p-6 rounded-2xl modal-content">
+            <h2 class="text-xl font-bold mb-4">Log Medication</h2>
+            <div class="space-y-3">
+                <p class="text-sm text-gray-300">Select the medication you took:</p>
+                <div id="meds-checkbox-1" class="custom-checkbox hidden">
+                    <input type="checkbox" id="med-1">
+                    <label for="med-1" id="med-label-1">Default Med 1</label>
+                </div>
+                <div id="meds-checkbox-2" class="custom-checkbox hidden">
+                    <input type="checkbox" id="med-2">
+                    <label for="med-2" id="med-label-2">Default Med 2</label>
+                </div>
+                <div>
+                     <label for="other-meds-input" class="block text-sm font-medium text-gray-300 mb-1">Other Medication</label>
+                    <input type="text" id="other-meds-input" class="w-full bg-white/10 rounded-md border-white/20 p-2" placeholder="e.g., CTM, Cold medicine">
+                </div>
+            </div>
+            <div class="mt-6 flex gap-3">
+                <button id="log-meds-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Log Meds</button>
+                <button id="close-meds-logging-btn" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="rating-modal" class="modal-overlay">
+        <div class="glass-card w-full max-w-sm p-8 rounded-2xl text-center modal-content">
+            <h2 class="text-2xl font-bold mb-2">How was your sleep quality?</h2>
+            <p class="text-gray-300 mb-6">Rate it from 1 to 5.</p>
+            <div class="rating-stars mb-8 text-5xl">
+                <span class="star" data-value="1"><i data-lucide="star"></i></span>
+                <span class="star" data-value="2"><i data-lucide="star"></i></span>
+                <span class="star" data-value="3"><i data-lucide="star"></i></span>
+                <span class="star" data-value="4"><i data-lucide="star"></i></span>
+                <span class="star" data-value="5"><i data-lucide="star"></i></span>
+            </div>
+            <button id="save-rating-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:bg-gray-500/50 disabled:cursor-not-allowed">
+                Save Log
+            </button>
+        </div>
+    </div>
+
+    <!-- NEW: Modal for adding notes to events -->
+    <div id="note-modal" class="modal-overlay">
+        <div class="glass-card w-full max-w-sm p-6 rounded-2xl modal-content">
+            <h2 id="note-modal-title" class="text-xl font-bold mb-4">What's happening?</h2>
+            <textarea id="event-note-input" class="w-full bg-white/10 rounded-md border-white/20 p-2 h-24 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Optional: e.g., feeling anxious, loud noise outside..."></textarea>
+            <div class="mt-6 flex gap-3">
+                <button id="save-event-with-note-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Log Event</button>
+                <button id="cancel-note-btn" class="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, collection, addDoc, updateDoc, onSnapshot, query, serverTimestamp, arrayUnion, setDoc, getDoc, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // --- Firebase configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDihjIVOO8SqUH4LMh9C9innsT-PGMubr0",
+            authDomain: "personal-sleep-tracker.firebaseapp.com",
+            projectId: "personal-sleep-tracker",
+            storageBucket: "personal-sleep-tracker.appspot.com",
+            messagingSenderId: "605413864458",
+            appId: "1:605413864458:web:221fb9cf0a38cc64d81bf3",
+            measurementId: "G-LBCEPLGR14"
+        };
+        
+        // --- DOM Elements ---
+        const loadingState = document.getElementById('loading-state');
+        const loginState = document.getElementById('login-state');
+        const appState = document.getElementById('app-state');
+        const googleSigninBtn = document.getElementById('google-signin-btn');
+        const welcomeMsg = document.getElementById('welcome-msg');
+        const userPhoto = document.getElementById('user-photo');
+        const startEndBtn = document.getElementById('start-end-btn');
+        const actionButtons = {
+            meds: document.getElementById('meds-btn'),
+            bedtime: document.getElementById('bedtime-btn'),
+            struggle: document.getElementById('struggle-btn'),
+            wakeup: document.getElementById('wakeup-btn'),
+        };
+        const currentLogContainer = document.getElementById('current-log-container');
+        const latestLogContainer = document.getElementById('latest-log-container');
+        const detailsToggleBtn = document.getElementById('details-toggle-btn');
+        const reportBtn = document.getElementById('report-btn');
+        
+        // Reminders
+        const doctorReminderDateEl = document.getElementById('doctor-reminder-date');
+        const doctorReminderCountdownEl = document.getElementById('doctor-reminder-countdown');
+        const rujukanReminderDateEl = document.getElementById('rujukan-reminder-date');
+        const rujukanReminderCountdownEl = document.getElementById('rujukan-reminder-countdown');
+        
+        // Modals
+        const locationModal = document.getElementById('location-modal');
+        const confirmStartBtn = document.getElementById('confirm-start-btn');
+        const cancelStartBtn = document.getElementById('cancel-start-btn');
+        const customLocationInput = document.getElementById('custom-location-input');
+        const locationRadios = document.querySelectorAll('input[name="location"]');
+
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsModal = document.getElementById('settings-modal');
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const defaultMedsName1Input = document.getElementById('default-meds-name-1');
+        const defaultMedsName2Input = document.getElementById('default-meds-name-2');
+        const doctorDateInput = document.getElementById('doctor-date');
+        const rujukanDateInput = document.getElementById('rujukan-date');
+        
+        const medsLoggingModal = document.getElementById('meds-logging-modal');
+        const medsCheckbox1 = document.getElementById('meds-checkbox-1');
+        const medsCheckbox2 = document.getElementById('meds-checkbox-2');
+        const med1Input = document.getElementById('med-1');
+        const med2Input = document.getElementById('med-2');
+        const med1Label = document.getElementById('med-label-1');
+        const med2Label = document.getElementById('med-label-2');
+        const otherMedsInput = document.getElementById('other-meds-input');
+        const logMedsBtn = document.getElementById('log-meds-btn');
+        const closeMedsLoggingBtn = document.getElementById('close-meds-logging-btn');
+
+        const ratingModal = document.getElementById('rating-modal');
+        const ratingStars = document.querySelectorAll('.rating-stars .star');
+        const saveRatingBtn = document.getElementById('save-rating-btn');
+
+        // NEW: Note Modal elements
+        const noteModal = document.getElementById('note-modal');
+        const noteModalTitle = document.getElementById('note-modal-title');
+        const eventNoteInput = document.getElementById('event-note-input');
+        const saveEventWithNoteBtn = document.getElementById('save-event-with-note-btn');
+        const cancelNoteBtn = document.getElementById('cancel-note-btn');
+
+        // --- App State ---
+        let db, auth;
+        let userId = null;
+        let currentLogId = null;
+        let userSettings = {};
+        let unsubscribeLogs = null;
+        let unsubscribeSettings = null;
+        let selectedRating = 0;
+        let eventToLog = null; // NEW: To track which event we're adding a note for
+
+        // --- Helper Functions ---
+        const formatTime = (ts) => ts ? ts.toDate().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '...';
+        const formatDateIndonesian = (ts) => {
+            if (!ts) return '...';
+            const date = ts.toDate();
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const dayName = days[date.getDay()];
+            const formattedDate = date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            return `${dayName}, ${formattedDate}`;
+        };
+        const dateToYYYYMMDD = (date) => date.toISOString().split('T')[0];
+        const toggleModal = (modal, show) => {
+            if (show) modal.classList.add('visible');
+            else modal.classList.remove('visible');
+        };
+        const formatTimeLeft = (targetDate) => {
+            if (!targetDate) return '';
+            const now = new Date();
+            const target = targetDate.toDate();
+            now.setHours(0, 0, 0, 0);
+            target.setHours(0, 0, 0, 0);
+
+            const diffTime = target - now;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 0) return `overdue by ${Math.abs(diffDays)} days`;
+            if (diffDays === 0) return 'due today';
+            if (diffDays === 1) return 'due tomorrow';
+            if (diffDays <= 7) return `in ${diffDays} days`;
+            if (diffDays < 30) return `in ${Math.floor(diffDays / 7)} weeks`;
+            return `in ${Math.floor(diffDays / 30)} months`;
+        };
+
+
+        // --- UI Update Functions ---
+        
+        function updateUI(logs) {
+            const activeLog = logs.find(log => log.status === 'active');
+            currentLogId = activeLog ? activeLog.id : null;
+
+            updateButtonStates(activeLog);
+
+            if (activeLog) {
+                latestLogContainer.classList.add('hidden');
+                updateCurrentLogUI(activeLog);
+            } else {
+                currentLogContainer.classList.add('hidden');
+                const completedLogs = logs.filter(log => log.status === 'completed').sort((a, b) => b.startDate.seconds - a.startDate.seconds);
+                if (completedLogs.length > 0) {
+                    updateLatestLogUI(completedLogs[0]);
+                } else {
+                    latestLogContainer.classList.add('hidden');
+                }
+            }
+        }
+        
+        function updateCurrentLogUI(log) {
+            if (!log) return;
+            currentLogContainer.classList.remove('hidden');
+            document.getElementById('current-log-date').textContent = formatDateIndonesian(log.startDate);
+            document.getElementById('current-location').textContent = log.location || '...';
+            const medsText = log.medicationTaken ? log.medicationTaken.join(', ') : '...';
+            document.getElementById('meds-details').textContent = medsText;
+            document.getElementById('bedtime-time').textContent = formatTime(log.bedTime);
+            document.getElementById('struggle-count').textContent = `${log.struggleLogs?.length || 0} times`;
+            document.getElementById('wakeup-count').textContent = `${log.accidentalWakeUps?.length || 0} times`;
+        }
+
+        function updateLatestLogUI(log) {
+            if (!log) return;
+            latestLogContainer.classList.remove('hidden');
+            document.getElementById('latest-log-date').textContent = formatDateIndonesian(log.startDate);
+            
+            // This calculation is a placeholder; the accurate calculation is on the dashboard
+            if (log.bedTime && log.finalWakeUpTime) {
+                const durationMillis = log.finalWakeUpTime.toMillis() - log.bedTime.toMillis();
+                const hours = Math.floor(durationMillis / 3600000);
+                const minutes = Math.floor((durationMillis % 3600000) / 60000);
+                document.getElementById('latest-log-duration').textContent = `${hours} h ${minutes} m`;
+            } else {
+                document.getElementById('latest-log-duration').textContent = '-- h -- m';
+            }
+
+            const qualityContainer = document.getElementById('latest-log-quality');
+            qualityContainer.innerHTML = '';
+            const rating = log.sleepQuality || 0;
+            for (let i = 1; i <= 5; i++) {
+                const starIcon = document.createElement('i');
+                starIcon.setAttribute('data-lucide', 'star');
+                if (i <= rating) starIcon.setAttribute('fill', 'currentColor');
+                qualityContainer.appendChild(starIcon);
+            }
+            
+            document.getElementById('latest-log-struggles').textContent = `${log.struggleLogs?.length || 0} times`;
+            document.getElementById('latest-log-wakeups').textContent = `${log.accidentalWakeUps?.length || 0} times`;
+
+            buildTimeline(log);
+            lucide.createIcons();
+        }
+
+        function buildTimeline(log) {
+            const detailsContainer = document.getElementById('latest-log-details');
+            detailsContainer.innerHTML = '';
+
+            const events = [];
+            if (log.medsTime) events.push({ time: log.medsTime.toDate(), label: `Took Meds (${log.medicationTaken.join(', ')})`, icon: 'pilcrow' });
+            if (log.bedTime) events.push({ time: log.bedTime.toDate(), label: 'Went to Bed', icon: 'bed-double' });
+            // Handle both old (timestamp) and new (object) event formats
+            const processEventArray = (arr, label, icon) => {
+                if (!arr) return;
+                arr.forEach(e => {
+                    const time = e.timestamp ? e.timestamp.toDate() : e.toDate();
+                    let eventLabel = label;
+                    if (e.note) eventLabel += ` <span class="text-gray-400 font-normal">- "${e.note}"</span>`;
+                    events.push({ time, label: eventLabel, icon });
+                });
+            };
+            processEventArray(log.struggleLogs, 'Struggling', 'cloud-moon');
+            processEventArray(log.accidentalWakeUps, 'Woke Up', 'alarm-clock-off');
+
+            if (log.finalWakeUpTime) events.push({ time: log.finalWakeUpTime.toDate(), label: 'Final Wake Up', icon: 'sun' });
+
+            events.sort((a, b) => a.time - b.time);
+
+            const timelineEl = document.createElement('div');
+            timelineEl.className = 'timeline mt-4';
+            events.forEach(event => {
+                const item = document.createElement('div');
+                item.className = 'timeline-item';
+                item.innerHTML = `
+                    <div class="timeline-icon"><i data-lucide="${event.icon}" class="w-3 h-3"></i></div>
+                    <div class="ml-4">
+                        <p class="font-semibold text-sm">${event.label}</p>
+                        <p class="text-xs text-gray-400">${event.time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p>
+                    </div>`;
+                timelineEl.appendChild(item);
+            });
+            detailsContainer.appendChild(timelineEl);
+        }
+
+        function updateButtonStates(activeLog) {
+            if (activeLog) {
+                startEndBtn.innerHTML = `<i data-lucide="save"></i><span>End & Save Log</span>`;
+                startEndBtn.classList.replace('bg-blue-600', 'bg-green-600');
+                startEndBtn.classList.replace('hover:bg-blue-700', 'hover:bg-green-700');
+                startEndBtn.disabled = false;
+                actionButtons.meds.disabled = !!activeLog.medsTime;
+                actionButtons.meds.classList.toggle('is-logged', !!activeLog.medsTime);
+                actionButtons.bedtime.disabled = !!activeLog.bedTime;
+                actionButtons.bedtime.classList.toggle('is-logged', !!activeLog.bedTime);
+                actionButtons.struggle.disabled = false;
+                actionButtons.wakeup.disabled = false;
+            } else {
+                startEndBtn.innerHTML = `<i data-lucide="play-circle"></i><span>Start New Night's Log</span>`;
+                startEndBtn.classList.replace('bg-green-600', 'bg-blue-600');
+                startEndBtn.classList.replace('hover:bg-green-700', 'hover:bg-blue-700');
+                startEndBtn.disabled = false;
+                Object.values(actionButtons).forEach(btn => {
+                    btn.disabled = true;
+                    btn.classList.remove('is-logged');
+                });
+            }
+            lucide.createIcons({ nodes: [startEndBtn] });
+        }
+
+        function updateRemindersUI(settings) {
+            if (settings && settings.doctorVisit) {
+                doctorReminderDateEl.textContent = formatDateIndonesian(settings.doctorVisit);
+                doctorReminderCountdownEl.textContent = formatTimeLeft(settings.doctorVisit);
+                doctorReminderDateEl.classList.toggle('text-red-400', formatTimeLeft(settings.doctorVisit).includes('overdue'));
+            } else {
+                doctorReminderDateEl.textContent = "Not Set";
+                doctorReminderCountdownEl.textContent = '';
+                doctorReminderDateEl.classList.remove('text-red-400');
+            }
+            if (settings && settings.rujukanRenewal) {
+                rujukanReminderDateEl.textContent = formatDateIndonesian(settings.rujukanRenewal);
+                rujukanReminderCountdownEl.textContent = formatTimeLeft(settings.rujukanRenewal);
+                rujukanReminderDateEl.classList.toggle('text-red-400', formatTimeLeft(settings.rujukanRenewal).includes('overdue'));
+            } else {
+                rujukanReminderDateEl.textContent = "Not Set";
+                rujukanReminderCountdownEl.textContent = '';
+                rujukanReminderDateEl.classList.remove('text-red-400');
+            }
+        }
+
+        // --- Firebase Logic ---
+        function listenToData() {
+            if (unsubscribeLogs) unsubscribeLogs(); 
+            if (unsubscribeSettings) unsubscribeSettings();
+            
+            const logsCollection = collection(db, 'users', userId, 'sleepLogs');
+            const q = query(logsCollection, orderBy('startDate', 'desc'));
+            unsubscribeLogs = onSnapshot(q, snapshot => {
+                const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                updateUI(logs);
+            }, console.error);
+
+            const settingsDocRef = doc(db, 'users', userId, 'settings', 'userProfile');
+            unsubscribeSettings = onSnapshot(settingsDocRef, (doc) => {
+                userSettings = doc.data() || {};
+                updateRemindersUI(userSettings);
+            }, console.error);
+        }
+
+        startEndBtn.addEventListener('click', () => {
+            if (currentLogId) {
+                selectedRating = 0;
+                saveRatingBtn.disabled = true;
+                ratingStars.forEach(s => {
+                    s.classList.remove('selected');
+                    const svg = s.querySelector('svg');
+                    if (svg) svg.setAttribute('fill', 'none');
+                });
+                toggleModal(ratingModal, true);
+            } else {
+                toggleModal(locationModal, true);
+            }
+        });
+
+        confirmStartBtn.addEventListener('click', async () => {
+            let location = document.querySelector('input[name="location"]:checked').value;
+            if (location === 'Custom') {
+                location = customLocationInput.value.trim() || 'Custom';
+            }
+            const logsCollection = collection(db, 'users', userId, 'sleepLogs');
+            await addDoc(logsCollection, {
+                startDate: serverTimestamp(), status: 'active', location: location,
+                struggleLogs: [], accidentalWakeUps: []
+            });
+            toggleModal(locationModal, false);
+        });
+        cancelStartBtn.addEventListener('click', () => toggleModal(locationModal, false));
+
+        async function logSimpleEvent(fieldName, data = {}) {
+            if (!currentLogId) return;
+            const logDoc = doc(db, 'users', userId, 'sleepLogs', currentLogId);
+            let updateData = {};
+            updateData[fieldName] = serverTimestamp();
+            await updateDoc(logDoc, { ...updateData, ...data });
+        }
+
+        // --- Event Listeners ---
+        locationRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                customLocationInput.classList.toggle('hidden', radio.value !== 'Custom');
+            });
+        });
+        
+        detailsToggleBtn.addEventListener('click', () => {
+            const detailsSection = document.getElementById('latest-log-details');
+            const icon = detailsToggleBtn.querySelector('svg');
+            const text = detailsToggleBtn.querySelector('span');
+            detailsSection.classList.toggle('expanded');
+            if (icon && text) {
+                if (detailsSection.classList.contains('expanded')) {
+                    icon.style.transform = 'rotate(180deg)';
+                    text.textContent = 'Hide Details';
+                } else {
+                    icon.style.transform = 'rotate(0deg)';
+                    text.textContent = 'Show Details';
+                }
+            }
+        });
+
+        settingsBtn.addEventListener('click', async () => {
+            const settingsDocRef = doc(db, 'users', userId, 'settings', 'userProfile');
+            const docSnap = await getDoc(settingsDocRef);
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                defaultMedsName1Input.value = data.defaultMedication1 || '';
+                defaultMedsName2Input.value = data.defaultMedication2 || '';
+                if (data.doctorVisit) doctorDateInput.value = dateToYYYYMMDD(data.doctorVisit.toDate());
+                if (data.rujukanRenewal) rujukanDateInput.value = dateToYYYYMMDD(data.rujukanRenewal.toDate());
+            }
+            toggleModal(settingsModal, true);
+        });
+
+        closeSettingsBtn.addEventListener('click', () => toggleModal(settingsModal, false));
+        saveSettingsBtn.addEventListener('click', async () => {
+            const settingsDocRef = doc(db, 'users', userId, 'settings', 'userProfile');
+            const settingsData = {
+                defaultMedication1: defaultMedsName1Input.value.trim(),
+                defaultMedication2: defaultMedsName2Input.value.trim()
+            };
+            if (doctorDateInput.value) settingsData.doctorVisit = new Date(doctorDateInput.value);
+            if (rujukanDateInput.value) settingsData.rujukanRenewal = new Date(rujukanDateInput.value);
+            await setDoc(settingsDocRef, settingsData, { merge: true });
+            toggleModal(settingsModal, false);
+        });
+
+        actionButtons.meds.addEventListener('click', () => {
+            med1Input.checked = false;
+            med2Input.checked = false;
+            otherMedsInput.value = '';
+            
+            if (userSettings.defaultMedication1) {
+                med1Label.textContent = userSettings.defaultMedication1;
+                medsCheckbox1.classList.remove('hidden');
+            } else {
+                medsCheckbox1.classList.add('hidden');
+            }
+            if (userSettings.defaultMedication2) {
+                med2Label.textContent = userSettings.defaultMedication2;
+                medsCheckbox2.classList.remove('hidden');
+            } else {
+                medsCheckbox2.classList.add('hidden');
+            }
+            toggleModal(medsLoggingModal, true);
+        });
+        
+        closeMedsLoggingBtn.addEventListener('click', () => toggleModal(medsLoggingModal, false));
+        logMedsBtn.addEventListener('click', async () => {
+            const medicationTaken = [];
+            if (med1Input.checked && userSettings.defaultMedication1) medicationTaken.push(userSettings.defaultMedication1);
+            if (med2Input.checked && userSettings.defaultMedication2) medicationTaken.push(userSettings.defaultMedication2);
+            const otherMed = otherMedsInput.value.trim();
+            if (otherMed) medicationTaken.push(otherMed);
+
+            if (medicationTaken.length > 0) {
+                await logSimpleEvent('medsTime', { medicationTaken });
+                toggleModal(medsLoggingModal, false);
+            }
+        });
+
+        ratingStars.forEach(star => {
+            star.addEventListener('click', () => {
+                selectedRating = parseInt(star.dataset.value);
+                saveRatingBtn.disabled = false;
+                ratingStars.forEach(s => {
+                    const isSelected = parseInt(s.dataset.value) <= selectedRating;
+                    s.classList.toggle('selected', isSelected);
+                    const svg = s.querySelector('svg');
+                    if (svg) svg.setAttribute('fill', isSelected ? 'currentColor' : 'none');
+                });
+            });
+        });
+
+        saveRatingBtn.addEventListener('click', async () => {
+            // *** FIX: Capture the currentLogId in a local variable ***
+            const logIdToSave = currentLogId;
+            if (!logIdToSave || selectedRating === 0) return;
+            
+            saveRatingBtn.disabled = true;
+            
+            const finalWakeUpTime = new Date(); // Capture the final wake up time now
+            
+            // 1. Update the private log
+            const privateLogRef = doc(db, 'users', userId, 'sleepLogs', logIdToSave);
+            await updateDoc(privateLogRef, { 
+                status: 'completed', 
+                finalWakeUpTime: finalWakeUpTime,
+                sleepQuality: selectedRating
+            });
+
+            // 2. Get the full private log data
+            const privateLogSnap = await getDoc(privateLogRef);
+            const completedLogData = privateLogSnap.data();
+
+            // 3. Create a copy in the public collection
+            if (completedLogData) {
+                const publicLogRef = doc(db, 'publicReports', userId, 'sleepLogs', logIdToSave);
+                await setDoc(publicLogRef, completedLogData);
+            }
+            
+            toggleModal(ratingModal, false);
+        });
+
+        actionButtons.bedtime.addEventListener('click', () => logSimpleEvent('bedTime'));
+        
+        // --- NEW: Logic for opening the note modal ---
+        function openNoteModal(eventType, title) {
+            eventToLog = eventType;
+            noteModalTitle.textContent = title;
+            eventNoteInput.value = '';
+            toggleModal(noteModal, true);
+            eventNoteInput.focus();
+        }
+
+        actionButtons.struggle.addEventListener('click', () => openNoteModal('struggleLogs', 'Why are you struggling?'));
+        actionButtons.wakeup.addEventListener('click', () => openNoteModal('accidentalWakeUps', 'Why did you wake up?'));
+
+        cancelNoteBtn.addEventListener('click', () => {
+            toggleModal(noteModal, false);
+            eventToLog = null;
+        });
+
+        saveEventWithNoteBtn.addEventListener('click', async () => {
+            if (!currentLogId || !eventToLog) return;
+            
+            const note = eventNoteInput.value.trim();
+            const eventData = {
+                timestamp: new Date()
+            };
+            if (note) {
+                eventData.note = note;
+            }
+
+            const logDoc = doc(db, 'users', userId, 'sleepLogs', currentLogId);
+            const updatePayload = {};
+            updatePayload[eventToLog] = arrayUnion(eventData);
+            
+            await updateDoc(logDoc, updatePayload);
+            
+            toggleModal(noteModal, false);
+            eventToLog = null;
+        });
+
+
+        // --- Initialization ---
+        function main() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                onAuthStateChanged(auth, user => {
+                    loadingState.classList.add('hidden');
+                    if (user) {
+                        userId = user.uid;
+                        welcomeMsg.textContent = `Hi, ${user.displayName.split(' ')[0]}`;
+                        userPhoto.src = user.photoURL;
+                        
+                        reportBtn.href = `report.html?user=${user.uid}`;
+
+                        loginState.classList.add('hidden');
+                        appState.classList.remove('hidden');
+                        lucide.createIcons();
+                        listenToData();
+                    } else {
+                        appState.classList.add('hidden');
+                        loginState.classList.remove('hidden');
+                        if (unsubscribeLogs) unsubscribeLogs();
+                        if (unsubscribeSettings) unsubscribeSettings();
+                    }
+                });
+            } catch (error) {
+                console.error("Firebase Init Error:", error);
+                loadingState.innerHTML = '<p class="text-red-400">Error. Please reload the page.</p>';
+            }
+        }
+
+        googleSigninBtn.addEventListener('click', () => {
+            const provider = new GoogleAuthProvider();
+            signInWithPopup(auth, provider).catch(console.error);
+        });
+
+        main();
+    </script>
+</body>
+</html>

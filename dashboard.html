@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sleep Dashboard</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #111827;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(120, 82, 255, 0.15), transparent 40%),
+                radial-gradient(circle at 85% 30%, rgba(56, 189, 248, 0.15), transparent 40%);
+            background-attachment: fixed;
+        }
+
+        .glass-card {
+            background: rgba(31, 41, 55, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        
+        .loader {
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            border-top: 4px solid #fff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .summary-stars {
+             color: #facc15;
+        }
+
+        /* Custom scrollbar for a cleaner look */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+        }
+        
+        /* Details Toggle & Section */
+        .details-section {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, margin-top 0.5s ease-in-out, padding-top 0.5s ease-in-out;
+        }
+        .details-section.expanded {
+            max-height: 500px; /* Adjust as needed */
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="antialiased text-white p-4 md:p-8">
+
+    <div id="app-container" class="w-full max-w-4xl mx-auto">
+        
+        <!-- Loading State -->
+        <div id="loading-state" class="text-center py-20">
+            <div class="loader mx-auto"></div>
+            <p class="mt-4 text-gray-300">Analyzing your sleep data...</p>
+        </div>
+
+        <!-- Main Dashboard State -->
+        <div id="dashboard-state" class="hidden">
+            <!-- Header -->
+            <header class="flex flex-col md:flex-row items-start md:items-center justify-between mb-8">
+                <div>
+                    <h1 class="text-3xl font-bold">Sleep Dashboard</h1>
+                    <p id="user-greeting" class="text-gray-300"></p>
+                </div>
+                <a href="index.html" class="mt-4 md:mt-0 bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                    <span>Back to Logger</span>
+                </a>
+            </header>
+
+            <!-- Averages Section -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="glass-card p-4 rounded-2xl">
+                    <div class="flex items-center gap-1 text-sm text-gray-400">
+                        <span>Avg. Duration (7d)</span>
+                        <div class="group relative flex items-center">
+                            <i data-lucide="help-circle" class="w-3.5 h-3.5 text-gray-500 cursor-pointer"></i>
+                            <span class="absolute bottom-full mb-2 w-60 p-2 bg-gray-900 border border-white/10 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                <b>Calculation:</b> (Final Wake Up Time - Last 'Struggle' Time). If no struggles are logged, it uses 'Went to Bed' time as the start.
+                            </span>
+                        </div>
+                    </div>
+                    <p id="avg-duration-7d" class="text-2xl font-bold">-- h -- m</p>
+                </div>
+                <div class="glass-card p-4 rounded-2xl">
+                     <div class="flex items-center gap-1 text-sm text-gray-400">
+                        <span>Avg. Quality (7d)</span>
+                        <div class="group relative flex items-center">
+                            <i data-lucide="help-circle" class="w-3.5 h-3.5 text-gray-500 cursor-pointer"></i>
+                            <span class="absolute bottom-full mb-2 w-60 p-2 bg-gray-900 border border-white/10 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                The average of your self-rated sleep quality (1-5 stars) for the period.
+                            </span>
+                        </div>
+                    </div>
+                    <p id="avg-quality-7d" class="text-2xl font-bold">-- / 5</p>
+                </div>
+                <div class="glass-card p-4 rounded-2xl">
+                    <div class="flex items-center gap-1 text-sm text-gray-400">
+                        <span>Avg. Duration (30d)</span>
+                         <div class="group relative flex items-center">
+                            <i data-lucide="help-circle" class="w-3.5 h-3.5 text-gray-500 cursor-pointer"></i>
+                            <span class="absolute bottom-full mb-2 w-60 p-2 bg-gray-900 border border-white/10 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                <b>Calculation:</b> (Final Wake Up Time - Last 'Struggle' Time). If no struggles are logged, it uses 'Went to Bed' time as the start.
+                            </span>
+                        </div>
+                    </div>
+                    <p id="avg-duration-30d" class="text-2xl font-bold">-- h -- m</p>
+                </div>
+                <div class="glass-card p-4 rounded-2xl">
+                    <div class="flex items-center gap-1 text-sm text-gray-400">
+                        <span>Avg. Quality (30d)</span>
+                         <div class="group relative flex items-center">
+                            <i data-lucide="help-circle" class="w-3.5 h-3.5 text-gray-500 cursor-pointer"></i>
+                            <span class="absolute bottom-full mb-2 w-60 p-2 bg-gray-900 border border-white/10 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                               The average of your self-rated sleep quality (1-5 stars) for the period.
+                            </span>
+                        </div>
+                    </div>
+                    <p id="avg-quality-30d" class="text-2xl font-bold">-- / 5</p>
+                </div>
+            </div>
+
+            <!-- Chart Section -->
+            <div class="glass-card p-4 md:p-6 rounded-2xl mb-8">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                    <h2 class="text-xl font-semibold mb-2 sm:mb-0">Sleep Analysis</h2>
+                    <div id="chart-filters" class="flex items-center gap-2">
+                        <button data-days="7" class="chart-filter-btn bg-blue-600 text-white px-3 py-1 text-sm rounded-md">7 Days</button>
+                        <button data-days="14" class="chart-filter-btn bg-white/10 hover:bg-white/20 text-white px-3 py-1 text-sm rounded-md">14 Days</button>
+                        <button data-days="30" class="chart-filter-btn bg-white/10 hover:bg-white/20 text-white px-3 py-1 text-sm rounded-md">30 Days</button>
+                    </div>
+                </div>
+                <div class="relative h-72 md:h-96">
+                    <canvas id="sleepChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Insights Section -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                <div class="glass-card p-4 rounded-2xl">
+                    <h3 class="font-semibold mb-2">Location Insights</h3>
+                    <div id="location-insights" class="text-sm space-y-2">
+                        <p class="text-gray-400">No location data to compare yet.</p>
+                    </div>
+                </div>
+                <div class="glass-card p-4 rounded-2xl">
+                    <h3 class="font-semibold mb-2">Interruption Averages (7d)</h3>
+                    <div class="flex justify-around text-center">
+                        <div>
+                            <p class="text-sm text-gray-400">Struggles / night</p>
+                            <p id="avg-struggles-7d" class="text-2xl font-bold">--</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-400">Wake-ups / night</p>
+                            <p id="avg-wakeups-7d" class="text-2xl font-bold">--</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass-card p-4 rounded-2xl md:col-span-2 lg:col-span-1">
+                    <h3 class="font-semibold mb-2">Medication Insights</h3>
+                    <div id="medication-insights" class="text-sm space-y-2">
+                        <p class="text-gray-400">Not enough data to compare.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Log -->
+            <div>
+                <h2 class="text-xl font-semibold mb-4">Full History</h2>
+                <div id="history-container" class="space-y-3 max-h-96 overflow-y-auto custom-scrollbar pr-2">
+                     <p id="no-history-msg" class="text-gray-400 text-center py-4">No completed sleep logs yet.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // --- Firebase configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDihjIVOO8SqUH4LMh9C9innsT-PGMubr0",
+            authDomain: "personal-sleep-tracker.firebaseapp.com",
+            projectId: "personal-sleep-tracker",
+            storageBucket: "personal-sleep-tracker.appspot.com",
+            messagingSenderId: "605413864458",
+            appId: "1:605413864458:web:221fb9cf0a38cc64d81bf3",
+            measurementId: "G-LBCEPLGR14"
+        };
+
+        // --- DOM Elements ---
+        const loadingState = document.getElementById('loading-state');
+        const dashboardState = document.getElementById('dashboard-state');
+        const userGreeting = document.getElementById('user-greeting');
+        const historyContainer = document.getElementById('history-container');
+        const noHistoryMsg = document.getElementById('no-history-msg');
+        const chartFilters = document.getElementById('chart-filters');
+
+        // --- App State ---
+        let db, auth;
+        let userId = null;
+        let allLogs = [];
+        let sleepChart = null;
+
+        // --- Helper Functions ---
+        const formatDuration = (millis) => {
+            if (isNaN(millis) || millis < 0) return '-- h -- m';
+            const hours = Math.floor(millis / 3600000);
+            const minutes = Math.floor((millis % 3600000) / 60000);
+            return `${hours} h ${minutes} m`;
+        };
+        const formatShortDate = (date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const formatTime = (ts) => ts ? ts.toDate().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
+
+        /**
+         * Determines the actual sleep start time for a log.
+         * It returns the timestamp of the last struggle event, or the bedtime if no struggles were logged.
+         * @param {object} log - The sleep log object.
+         * @returns {object|null} - The Firestore Timestamp object for the start of sleep, or null if not determinable.
+         */
+        function getSleepStartTime(log) {
+            if (log.struggleLogs && log.struggleLogs.length > 0) {
+                // Find the latest timestamp in the struggleLogs array
+                const lastStruggleTimestamp = log.struggleLogs.reduce((latest, current) => {
+                    // Handle both old format (just a timestamp) and new format ({timestamp, note})
+                    const latestTime = latest.timestamp ? latest.timestamp.toDate() : latest.toDate();
+                    const currentTime = current.timestamp ? current.timestamp.toDate() : current.toDate();
+                    return latestTime > currentTime ? latest : current;
+                });
+                return lastStruggleTimestamp.timestamp || lastStruggleTimestamp;
+            }
+            return log.bedTime; // Fallback to the time they went to bed
+        }
+
+        // --- Data Processing ---
+        function processData(logs) {
+            allLogs = logs.filter(log => log.status === 'completed' && log.bedTime && log.finalWakeUpTime)
+                          .sort((a, b) => a.startDate.seconds - b.startDate.seconds);
+            
+            if (allLogs.length === 0) {
+                loadingState.innerHTML = '<p class="text-gray-400">No sleep data found to analyze.</p>';
+                return;
+            }
+
+            loadingState.classList.add('hidden');
+            dashboardState.classList.remove('hidden');
+            
+            calculateAverages();
+            updateChart(7); // Default to 7 days
+            updateLocationInsights();
+            updateMedicationInsights();
+            renderHistory();
+            lucide.createIcons();
+        }
+
+        function calculateAverages() {
+            const now = new Date();
+            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+            const logs7d = allLogs.filter(log => log.startDate.toDate() >= sevenDaysAgo);
+            const logs30d = allLogs.filter(log => log.startDate.toDate() >= thirtyDaysAgo);
+
+            const calcAvg = (logSet) => {
+                if (logSet.length === 0) return { duration: 0, quality: 0, struggles: 0, wakeups: 0 };
+                
+                const totalDuration = logSet.reduce((sum, log) => {
+                    const startTime = getSleepStartTime(log);
+                    if (!startTime || !log.finalWakeUpTime) return sum;
+                    return sum + (log.finalWakeUpTime.toMillis() - startTime.toMillis());
+                }, 0);
+
+                const totalQuality = logSet.reduce((sum, log) => sum + (log.sleepQuality || 0), 0);
+                const totalStruggles = logSet.reduce((sum, log) => sum + (log.struggleLogs?.length || 0), 0);
+                const totalWakeups = logSet.reduce((sum, log) => sum + (log.accidentalWakeUps?.length || 0), 0);
+                
+                return {
+                    duration: totalDuration / logSet.length,
+                    quality: totalQuality / logSet.length,
+                    struggles: totalStruggles / logSet.length,
+                    wakeups: totalWakeups / logSet.length,
+                };
+            };
+            
+            const avg7d = calcAvg(logs7d);
+            const avg30d = calcAvg(logs30d);
+
+            document.getElementById('avg-duration-7d').textContent = formatDuration(avg7d.duration);
+            document.getElementById('avg-quality-7d').textContent = `${avg7d.quality.toFixed(1)} / 5`;
+            document.getElementById('avg-duration-30d').textContent = formatDuration(avg30d.duration);
+            document.getElementById('avg-quality-30d').textContent = `${avg30d.quality.toFixed(1)} / 5`;
+            document.getElementById('avg-struggles-7d').textContent = avg7d.struggles.toFixed(1);
+            document.getElementById('avg-wakeups-7d').textContent = avg7d.wakeups.toFixed(1);
+        }
+
+        function updateLocationInsights() {
+            const insightsContainer = document.getElementById('location-insights');
+            const locations = {};
+            allLogs.forEach(log => {
+                const loc = log.location || 'Unknown';
+                if (!locations[loc]) {
+                    locations[loc] = { totalQuality: 0, count: 0 };
+                }
+                locations[loc].totalQuality += (log.sleepQuality || 0);
+                locations[loc].count++;
+            });
+
+            const insights = Object.entries(locations).map(([name, data]) => ({
+                name,
+                avgQuality: (data.totalQuality / data.count).toFixed(1)
+            })).sort((a,b) => b.avgQuality - a.avgQuality);
+
+            if (insights.length > 1) {
+                insightsContainer.innerHTML = insights.map(insight => `
+                    <div class="flex justify-between items-center">
+                        <span>${insight.name}</span>
+                        <div class="flex items-center gap-1 summary-stars">
+                            <span>${insight.avgQuality}</span>
+                            <i data-lucide="star" class="w-4 h-4" fill="currentColor"></i>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                 insightsContainer.innerHTML = `<p class="text-gray-400">Log more nights in different locations to see insights.</p>`;
+            }
+        }
+        
+        function updateMedicationInsights() {
+            const insightsContainer = document.getElementById('medication-insights');
+            const medStats = {};
+
+            allLogs.forEach(log => {
+                const meds = log.medicationTaken && log.medicationTaken.length > 0 ? log.medicationTaken.join(' + ') : 'No Meds';
+                const quality = log.sleepQuality || 0;
+
+                if (!medStats[meds]) {
+                    medStats[meds] = { totalQuality: 0, count: 0 };
+                }
+                medStats[meds].totalQuality += quality;
+                medStats[meds].count++;
+            });
+
+            const insights = Object.entries(medStats).map(([name, data]) => ({
+                name,
+                avgQuality: (data.totalQuality / data.count).toFixed(1),
+                count: data.count
+            })).sort((a,b) => b.avgQuality - a.avgQuality);
+
+            if (insights.length > 1) {
+                insightsContainer.innerHTML = insights.map(insight => `
+                    <div class="flex justify-between items-center">
+                        <span class="truncate pr-2">${insight.name} <span class="text-xs text-gray-400">(${insight.count}n)</span></span>
+                        <div class="flex items-center gap-1 summary-stars flex-shrink-0">
+                            <span>${insight.avgQuality}</span>
+                            <i data-lucide="star" class="w-4 h-4" fill="currentColor"></i>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                 insightsContainer.innerHTML = `<p class="text-gray-400">Log nights with different medications to see insights.</p>`;
+            }
+        }
+
+
+        function renderHistory() {
+            historyContainer.innerHTML = '';
+            if (allLogs.length === 0) {
+                historyContainer.appendChild(noHistoryMsg);
+                return;
+            }
+            
+            [...allLogs].reverse().forEach(log => {
+                const item = document.createElement('div');
+                item.className = 'glass-card p-4 rounded-lg text-sm';
+                
+                const startTime = getSleepStartTime(log);
+                const duration = startTime ? formatDuration(log.finalWakeUpTime.toMillis() - startTime.toMillis()) : 'N/A';
+                const quality = log.sleepQuality || 0;
+                
+                let qualityHTML = '';
+                for (let i = 1; i <= 5; i++) {
+                    qualityHTML += `<i data-lucide="star" class="w-4 h-4 ${i <= quality ? 'text-yellow-400' : 'text-gray-600'}" fill="${i <= quality ? 'currentColor' : 'none'}"></i>`;
+                }
+
+                const formatEventTimeWithNote = (event) => {
+                    const timestamp = event.timestamp ? event.timestamp : event;
+                    const time = formatTime(timestamp);
+                    const note = event.note ? `<span class="text-gray-400 italic"> - "${event.note}"</span>` : '';
+                    return `<p>${time}${note}</p>`;
+                };
+
+                const struggleTimes = log.struggleLogs?.map(formatEventTimeWithNote).join('') || 'None';
+                const wakeupTimes = log.accidentalWakeUps?.map(formatEventTimeWithNote).join('') || 'None';
+
+                let latencyText = 'N/A';
+                if (log.bedTime && startTime) {
+                    const latencyMillis = startTime.toMillis() - log.bedTime.toMillis();
+                    if (latencyMillis > 60000) {
+                        const hours = Math.floor(latencyMillis / 3600000);
+                        const minutes = Math.floor((latencyMillis % 3600000) / 60000);
+                        latencyText = (hours > 0 ? `${hours} h ` : '') + `${minutes} m`;
+                    } else {
+                        latencyText = '< 1 min';
+                    }
+                }
+
+                const detailsHTML = `
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5 text-sm">
+                        <div class="flex items-start gap-3">
+                            <i data-lucide="pill" class="w-5 h-5 text-cyan-400 mt-1 flex-shrink-0"></i>
+                            <div>
+                                <p class="font-semibold">Meds Taken</p>
+                                <p class="text-gray-300">${log.medicationTaken ? log.medicationTaken.join(', ') : 'N/A'} at ${formatTime(log.medsTime)}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <i data-lucide="bed-double" class="w-5 h-5 text-cyan-400 mt-1 flex-shrink-0"></i>
+                            <div>
+                                <p class="font-semibold">In Bed</p>
+                                <p class="text-gray-300">${formatTime(log.bedTime)}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <i data-lucide="hourglass" class="w-5 h-5 text-cyan-400 mt-1 flex-shrink-0"></i>
+                            <div>
+                                <div class="flex items-center gap-1">
+                                    <p class="font-semibold">Time to Fall Asleep</p>
+                                    <div class="group relative flex items-center">
+                                        <i data-lucide="help-circle" class="w-3.5 h-3.5 text-gray-500 cursor-pointer"></i>
+                                        <span class="absolute bottom-full mb-2 w-60 p-2 bg-gray-900 border border-white/10 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                            <b>Calculation:</b> (Last 'Struggle' Time - 'Went to Bed' Time). This shows how long you were in bed before falling asleep.
+                                        </span>
+                                    </div>
+                                </div>
+                                <p class="text-gray-300">${latencyText}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <i data-lucide="sun" class="w-5 h-5 text-cyan-400 mt-1 flex-shrink-0"></i>
+                            <div>
+                                <p class="font-semibold">Final Wake Up</p>
+                                <p class="text-gray-300">${formatTime(log.finalWakeUpTime)}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3 sm:col-span-1">
+                            <i data-lucide="cloud-moon" class="w-5 h-5 text-cyan-400 mt-1 flex-shrink-0"></i>
+                            <div>
+                                <p class="font-semibold">Struggles: ${log.struggleLogs?.length || 0} times</p>
+                                <div class="text-xs leading-relaxed">${struggleTimes}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3 sm:col-span-1">
+                            <i data-lucide="alarm-clock-off" class="w-5 h-5 text-cyan-400 mt-1 flex-shrink-0"></i>
+                            <div>
+                                <p class="font-semibold">Wake-ups: ${log.accidentalWakeUps?.length || 0} times</p>
+                                <div class="text-xs leading-relaxed">${wakeupTimes}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                item.innerHTML = `
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center">
+                        <div>
+                            <p class="font-semibold">${log.startDate.toDate().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                            <p class="text-xs text-gray-400">${log.location}</p>
+                        </div>
+                        <div class="flex items-center gap-4 mt-2 sm:mt-0">
+                             <div class="flex items-center gap-1">${qualityHTML}</div>
+                             <span class="font-bold text-lg">${duration}</span>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <button class="history-details-toggle w-full flex justify-between items-center text-xs text-cyan-400 hover:text-cyan-300">
+                            <span>Show Details</span>
+                            <i data-lucide="chevron-down" class="transition-transform w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <div class="details-section">
+                        ${detailsHTML}
+                    </div>
+                `;
+                historyContainer.appendChild(item);
+            });
+            lucide.createIcons();
+        }
+
+        // --- Chart Logic ---
+        function updateChart(days) {
+            const now = new Date();
+            const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+            const filteredLogs = allLogs.filter(log => log.startDate.toDate() >= startDate);
+
+            const labels = filteredLogs.map(log => formatShortDate(log.startDate.toDate()));
+            const durationData = filteredLogs.map(log => {
+                const startTime = getSleepStartTime(log);
+                if (!startTime) return 0;
+                return (log.finalWakeUpTime.toMillis() - startTime.toMillis()) / 3600000;
+            });
+            const qualityData = filteredLogs.map(log => log.sleepQuality);
+            const interruptionsData = filteredLogs.map(log => 
+                (log.struggleLogs?.length || 0) + (log.accidentalWakeUps?.length || 0)
+            );
+
+            const ctx = document.getElementById('sleepChart').getContext('2d');
+            if (sleepChart) {
+                sleepChart.destroy();
+            }
+            sleepChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Sleep Duration (hours)',
+                            data: durationData,
+                            backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            borderWidth: 1,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Sleep Quality',
+                            data: qualityData,
+                            type: 'line',
+                            borderColor: 'rgba(234, 179, 8, 1)',
+                            backgroundColor: 'rgba(234, 179, 8, 0.2)',
+                            tension: 0.3,
+                            yAxisID: 'y1',
+                            fill: true
+                        },
+                        {
+                            label: 'Interruptions',
+                            data: interruptionsData,
+                            type: 'line',
+                            borderColor: 'rgba(239, 68, 68, 1)',
+                            backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                            stepped: true,
+                            yAxisID: 'y1',
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                        y: {
+                            beginAtZero: true, position: 'left',
+                            title: { display: true, text: 'Hours', color: '#9ca3af' },
+                            ticks: { color: '#9ca3af' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y1: {
+                            beginAtZero: true, max: 5, position: 'right',
+                            title: { display: true, text: 'Rating / Count', color: '#9ca3af' },
+                            ticks: { color: '#9ca3af', stepSize: 1 },
+                            grid: { drawOnChartArea: false }
+                        }
+                    },
+                    plugins: { 
+                        legend: { labels: { color: '#d1d5db' } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y.toFixed(1);
+                                        if (context.dataset.label === 'Sleep Duration (hours)') {
+                                            label += ' hrs';
+                                        }
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // --- Event Listeners ---
+        chartFilters.addEventListener('click', (e) => {
+            if (e.target.classList.contains('chart-filter-btn')) {
+                const days = parseInt(e.target.dataset.days);
+                updateChart(days);
+                chartFilters.querySelectorAll('button').forEach(btn => {
+                    btn.classList.remove('bg-blue-600');
+                    btn.classList.add('bg-white/10', 'hover:bg-white/20');
+                });
+                e.target.classList.add('bg-blue-600');
+                e.target.classList.remove('bg-white/10', 'hover:bg-white/20');
+            }
+        });
+
+        historyContainer.addEventListener('click', (e) => {
+            const toggleBtn = e.target.closest('.history-details-toggle');
+            if (toggleBtn) {
+                const detailsSection = toggleBtn.parentElement.nextElementSibling;
+                const icon = toggleBtn.querySelector('svg');
+                const text = toggleBtn.querySelector('span');
+                detailsSection.classList.toggle('expanded');
+                if (icon && text) {
+                    if (detailsSection.classList.contains('expanded')) {
+                        icon.style.transform = 'rotate(180deg)';
+                        text.textContent = 'Hide Details';
+                    } else {
+                        icon.style.transform = 'rotate(0deg)';
+                        text.textContent = 'Show Details';
+                    }
+                }
+            }
+        });
+
+        // --- Initialization ---
+        function main() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, user => {
+                    if (user) {
+                        userId = user.uid;
+                        userGreeting.textContent = user.displayName ? `Welcome back, ${user.displayName.split(' ')[0]}.` : 'Welcome back.';
+                        
+                        const logsCollection = collection(db, 'users', userId, 'sleepLogs');
+                        const q = query(logsCollection, orderBy('startDate', 'desc'));
+
+                        onSnapshot(q, snapshot => {
+                            const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                            processData(logs);
+                        }, error => {
+                            console.error("Error fetching logs:", error);
+                            loadingState.innerHTML = '<p class="text-red-400">Could not load sleep data.</p>';
+                        });
+
+                    } else {
+                        window.location.href = 'index.html';
+                    }
+                });
+            } catch (error) {
+                console.error("Firebase Init Error:", error);
+                loadingState.innerHTML = '<p class="text-red-400">Error initializing. Please reload the page.</p>';
+            }
+        }
+
+        main();
+    </script>
+</body>
+</html>
