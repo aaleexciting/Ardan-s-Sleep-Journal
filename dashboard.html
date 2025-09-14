@@ -3,20 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sleep Dashboard</title>
-    
-    <!-- Tailwind CSS -->
+    <title>Sleep Dashboard</title>    
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 
@@ -80,7 +73,6 @@
         .summary-stars, .rating-stars {
              color: #facc15;
         }
-        /* Sleep Rating Stars in Edit Modal */
         .rating-stars {
             display: flex;
             justify-content: center;
@@ -97,8 +89,6 @@
             transform: scale(1.2);
         }
 
-
-        /* Custom scrollbar for a cleaner look */
         .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
         }
@@ -110,25 +100,22 @@
             border-radius: 10px;
         }
         
-        /* Details Toggle & Section */
         .details-section {
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.5s ease-in-out, margin-top 0.5s ease-in-out, padding-top 0.5s ease-in-out;
         }
         .details-section.expanded {
-            max-height: 800px; /* Increased max-height */
+            max-height: 800px;
             margin-top: 1rem;
             padding-top: 1rem;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        /* Input type time/date color scheme */
         input[type="time"], input[type="date"] {
             color-scheme: dark;
         }
 
-        /* Toast notification for copy link */
         #toast-notification {
             transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
         }
@@ -138,15 +125,11 @@
 
     <div id="app-container" class="w-full max-w-4xl mx-auto">
         
-        <!-- Loading State -->
         <div id="loading-state" class="text-center py-20">
             <div class="loader mx-auto"></div>
             <p class="mt-4 text-gray-300">Analyzing your sleep data...</p>
         </div>
-
-        <!-- Main Dashboard State -->
         <div id="dashboard-state" class="hidden">
-            <!-- Header -->
             <header class="flex flex-col md:flex-row items-start md:items-center justify-between mb-8">
                 <div>
                     <h1 class="text-3xl font-bold">Sleep Dashboard</h1>
@@ -164,7 +147,6 @@
                 </div>
             </header>
 
-            <!-- Averages Section -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <div class="glass-card p-4 rounded-2xl">
                     <div class="flex items-center gap-1 text-sm text-gray-400">
@@ -216,7 +198,6 @@
                 </div>
             </div>
 
-            <!-- Chart Section -->
             <div class="glass-card p-4 md:p-6 rounded-2xl mb-8">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
                     <h2 class="text-xl font-semibold mb-2 sm:mb-0">Sleep Analysis</h2>
@@ -231,7 +212,6 @@
                 </div>
             </div>
 
-            <!-- Insights Section -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
                 <div class="glass-card p-4 rounded-2xl">
                     <h3 class="font-semibold mb-2">Location Insights</h3>
@@ -260,7 +240,6 @@
                 </div>
             </div>
 
-            <!-- History Log -->
             <div>
                 <h2 class="text-xl font-semibold mb-4">Full History</h2>
                 <div id="history-container" class="space-y-3 max-h-96 overflow-y-auto custom-scrollbar pr-2">
@@ -271,7 +250,6 @@
         </div>
     </div>
 
-    <!-- Modals -->
     <div id="delete-confirm-modal" class="modal-overlay">
         <div class="glass-card w-full max-w-sm p-8 rounded-2xl text-center modal-content">
             <i data-lucide="alert-triangle" class="w-16 h-16 text-red-400 mx-auto mb-4"></i>
@@ -288,7 +266,6 @@
         <div class="glass-card w-full max-w-lg p-6 rounded-2xl modal-content custom-scrollbar overflow-y-auto max-h-[90vh]">
             <h2 class="text-xl font-bold mb-4">Edit Sleep Log</h2>
             <div class="space-y-4 text-sm">
-                <!-- Basic Info -->
                 <div class="border-b border-white/10 pb-4">
                     <label for="edit-date" class="block font-medium text-gray-300 mb-1">Date</label>
                     <input type="date" id="edit-date" class="w-full bg-white/10 rounded-md border-white/20 p-2" disabled>
@@ -322,7 +299,6 @@
                     </div>
                 </div>
 
-                <!-- Medication -->
                 <div class="border-b border-white/10 pb-4">
                      <label class="block font-medium text-gray-300 mb-1">Medication</label>
                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -348,15 +324,12 @@
                      </div>
                 </div>
 
-                <!-- Dynamic Events -->
                 <div id="edit-events-container" class="space-y-4">
-                    <!-- Struggles -->
                     <div>
                         <label class="block font-medium text-gray-300 mb-2">Struggle Events</label>
                         <div id="edit-struggles-list" class="space-y-2"></div>
                         <button id="add-struggle-btn" class="mt-2 text-xs bg-white/10 hover:bg-white/20 py-1 px-3 rounded-md flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> Add Struggle</button>
                     </div>
-                    <!-- Wakeups -->
                     <div>
                         <label class="block font-medium text-gray-300 mb-2">Wake Up Events</label>
                         <div id="edit-wakeups-list" class="space-y-2"></div>
@@ -364,7 +337,6 @@
                     </div>
                 </div>
 
-                <!-- Quality -->
                 <div class="border-t border-white/10 pt-4">
                     <label class="block text-center font-medium text-gray-300 mb-2">Sleep Quality</label>
                     <div id="edit-rating-stars" class="rating-stars text-3xl">
@@ -383,19 +355,16 @@
         </div>
     </div>
     
-    <!-- Toast Notification -->
     <div id="toast-notification" class="fixed bottom-5 right-5 bg-green-600 text-white py-2 px-4 rounded-lg shadow-lg transform translate-y-20 opacity-0 pointer-events-none">
         Link copied to clipboard!
     </div>
 
 
     <script type="module">
-        // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // --- Firebase configuration ---
         const firebaseConfig = {
             apiKey: "AIzaSyDihjIVOO8SqUH4LMh9C9innsT-PGMubr0",
             authDomain: "personal-sleep-tracker.firebaseapp.com",
@@ -406,7 +375,6 @@
             measurementId: "G-LBCEPLGR14"
         };
 
-        // --- DOM Elements ---
         const loadingState = document.getElementById('loading-state');
         const dashboardState = document.getElementById('dashboard-state');
         const userGreeting = document.getElementById('user-greeting');
@@ -415,7 +383,6 @@
         const chartFilters = document.getElementById('chart-filters');
         const shareReportBtn = document.getElementById('share-report-btn');
         
-        // Modals & Controls
         const deleteConfirmModal = document.getElementById('delete-confirm-modal');
         const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
         const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
@@ -449,7 +416,6 @@
         const cancelEditBtn = document.getElementById('cancel-edit-btn');
 
 
-        // --- App State ---
         let db, auth;
         let userId = null;
         let allLogs = [];
@@ -459,7 +425,6 @@
         let selectedEditRating = 0;
         let userSettings = {};
 
-        // --- Helper Functions ---
         const formatDuration = (millis) => {
             if (isNaN(millis) || millis < 0) return '-- h -- m';
             const hours = Math.floor(millis / 3600000);
@@ -469,7 +434,6 @@
         const formatShortDate = (date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         const formatTime = (ts) => {
             if (!ts) return '';
-            // If it's a Firestore Timestamp, convert it. Otherwise, assume it's a JS Date.
             const date = typeof ts.toDate === 'function' ? ts.toDate() : ts;
             return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
         };
@@ -491,7 +455,6 @@
             return log.bedTime;
         }
 
-        // --- Data Processing ---
         function processData(logs) {
             allLogs = logs.filter(log => log.status === 'completed' && log.bedTime && log.finalWakeUpTime)
                           .sort((a, b) => a.startDate.seconds - b.startDate.seconds);
@@ -505,7 +468,7 @@
             dashboardState.classList.remove('hidden');
             
             calculateAverages();
-            updateChart(7); // Default to 7 days
+            updateChart(7); 
             updateLocationInsights();
             updateMedicationInsights();
             renderHistory();
@@ -752,7 +715,6 @@
             lucide.createIcons();
         }
 
-        // --- Chart Logic ---
         function updateChart(days) {
             const now = new Date();
             const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
@@ -850,7 +812,6 @@
             });
         }
         
-        // --- Event Listeners ---
         chartFilters.addEventListener('click', (e) => {
             if (e.target.classList.contains('chart-filter-btn')) {
                 const days = parseInt(e.target.dataset.days);
@@ -911,7 +872,6 @@
         });
 
 
-        // --- Delete Logic ---
         cancelDeleteBtn.addEventListener('click', () => {
             toggleModal(deleteConfirmModal, false);
             logIdToDelete = null;
@@ -933,9 +893,8 @@
             }
         });
 
-        // --- Edit Logic ---
         function createEventRow(event, type) {
-            const timestamp = event.timestamp || event; // Handle old and new formats
+            const timestamp = event.timestamp || event;
             const note = event.note || '';
             
             const row = document.createElement('div');
@@ -957,7 +916,6 @@
             editFinalWakeUpTimeInput.value = formatTime(log.finalWakeUpTime).substring(0, 5);
             editMedsTimeInput.value = formatTime(log.medsTime).substring(0, 5);
             
-            // Populate locations
             if (log.location === 'Home') editLocationHomeRadio.checked = true;
             else if (log.location === 'Dorm') editLocationDormRadio.checked = true;
             else {
@@ -969,11 +927,9 @@
             }
 
 
-            // Populate medications from settings
             const otherMeds = [];
             const medsTaken = new Set(log.medicationTaken || []);
 
-            // Handle default med 1
             if (userSettings.defaultMedication1) {
                 editMedsOption1.classList.remove('hidden');
                 editMed1Label.textContent = userSettings.defaultMedication1;
@@ -990,7 +946,6 @@
                 editMedsOption2.classList.add('hidden');
             }
 
-            // Populate other meds
             medsTaken.forEach(med => {
                 if(med !== userSettings.defaultMedication1 && med !== userSettings.defaultMedication2) {
                     otherMeds.push(med);
@@ -999,7 +954,6 @@
             editMedsOtherInput.value = otherMeds.join(', ');
 
 
-            // Populate events
             editStrugglesList.innerHTML = '';
             log.struggleLogs?.forEach(event => editStrugglesList.appendChild(createEventRow(event, 'struggle')));
             editWakeupsList.innerHTML = '';
@@ -1049,13 +1003,11 @@
             const originalLog = allLogs.find(log => log.id === logIdToEdit);
             if (!originalLog) return;
             
-            // Get location
             let location = document.querySelector('input[name="edit-location"]:checked')?.value;
             if (location === 'other') {
                 location = editLocationOtherInput.value.trim();
             }
 
-            // Get medications
             const medicationTaken = [];
             if(editMed1Checkbox.checked && userSettings.defaultMedication1) medicationTaken.push(userSettings.defaultMedication1);
             if(editMed2Checkbox.checked && userSettings.defaultMedication2) medicationTaken.push(userSettings.defaultMedication2);
@@ -1113,7 +1065,6 @@
             }
         });
 
-        // --- Initialization ---
         function main() {
             try {
                 const app = initializeApp(firebaseConfig);
@@ -1125,13 +1076,11 @@
                         userId = user.uid;
                         userGreeting.textContent = user.displayName ? `Welcome back, ${user.displayName.split(' ')[0]}.` : 'Welcome back.';
                         
-                        // Listen to settings
                         const settingsDocRef = doc(db, 'users', userId, 'settings', 'userProfile');
                         onSnapshot(settingsDocRef, (doc) => {
                             userSettings = doc.data() || {};
                         });
 
-                        // Listen to logs
                         const logsCollection = collection(db, 'users', userId, 'sleepLogs');
                         const q = query(logsCollection, orderBy('startDate', 'desc'));
 
@@ -1157,5 +1106,3 @@
     </script>
 </body>
 </html>
-
-
