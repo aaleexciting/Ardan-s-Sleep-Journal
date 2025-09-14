@@ -21,7 +21,7 @@
         }
 
         .glass-card {
-            background: rgba(31, 41, 55, 0.6); /* Darker glass */
+            background: rgba(31, 41, 55, 0.6);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -144,7 +144,7 @@
         }
         .rating-stars .star:hover,
         .rating-stars .star.selected {
-            color: #facc15; /* Yellow */
+            color: #facc15;
             transform: scale(1.2);
         }
         .summary-stars {
@@ -184,7 +184,6 @@
             align-items: center;
             justify-content: center;
         }
-        /* Custom Checkbox for Meds Modal */
         .custom-checkbox label {
             display: flex;
             align-items: center;
@@ -202,7 +201,6 @@
         .custom-checkbox input {
             display: none;
         }
-        /* Input type time color scheme */
         input[type="time"] {
             color-scheme: dark;
         }
@@ -1010,12 +1008,10 @@
 
             try {
                 if (eventToEdit.index === null) {
-                    // Simple field update (medsTime, bedTime)
                     const updateData = {};
                     updateData[eventToEdit.type] = newDate;
                     await updateDoc(logDocRef, updateData);
                 } else {
-                    // Array field update (struggleLogs, accidentalWakeUps)
                     const docSnap = await getDoc(logDocRef);
                     if (!docSnap.exists()) return;
                     
@@ -1024,7 +1020,6 @@
                     const eventObject = eventArray[eventToEdit.index];
 
                     if (eventObject) {
-                        // Handle new format ({timestamp, note}) vs old format (just timestamp)
                         if (eventObject.hasOwnProperty('timestamp')) {
                             eventObject.timestamp = newDate;
                         } else {
@@ -1055,10 +1050,7 @@
                         userId = user.uid;
                         welcomeMsg.textContent = `Hi, ${user.displayName.split(' ')[0]}`;
                         userPhoto.src = user.photoURL;
-                        
-                        // Link to dashboard instead of report
                         reportBtn.href = `dashboard.html`;
-
                         loginState.classList.add('hidden');
                         appState.classList.remove('hidden');
                         lucide.createIcons();
@@ -1085,4 +1077,5 @@
     </script>
 </body>
 </html>
+
 
